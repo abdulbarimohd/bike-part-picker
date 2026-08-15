@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --page: #f6f7f9;
+  --card: #ffffff;
+}
+
+body {
+  color: theme('colors.ink.DEFAULT');
+  background:
+    radial-gradient(1200px 500px at 12% -8%, rgba(79, 70, 229, 0.10), transparent 60%),
+    radial-gradient(1000px 460px at 92% -12%, rgba(234, 88, 12, 0.09), transparent 62%),
+    var(--page);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  /* Subsystem colour is injected as --accent by the tile/page using it,
+     so one set of classes serves all 27 categories. */
+  .accent-tile {
+    @apply relative rounded-xl border bg-white p-4 transition-all duration-150;
+    border-color: color-mix(in srgb, var(--accent) 18%, #e6e8ec);
+  }
+  .accent-tile:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 2px 4px rgba(18, 20, 26, 0.06), 0 16px 40px -16px rgba(18, 20, 26, 0.28);
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+  }
+}
+
+/* Native controls otherwise inherit the OS dark theme and render as
+   black boxes on a light page. */
+select,
+input,
+textarea {
+  color-scheme: light;
+}

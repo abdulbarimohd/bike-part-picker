@@ -1,0 +1,631 @@
+# Session log — Bike PartPicker (2026-08-06 → 2026-08-15+)
+
+A durable, written record of the entire project history in Claude Code, not
+just the most recent stretch — why things are the way they are, in the
+order decisions actually got made. Read this before making architectural
+changes; a lot of what's below looks like a default choice until you see
+the actual back-and-forth that produced it.
+
+> **Raw transcript**: the verbatim conversation is preserved by the harness at
+> `C:\Users\abdul\.claude\projects\C--Users-abdul--claude\3dc59922-eb6d-4182-a676-4dab830a2257.jsonl`
+> (7,400+ entries, Aug 6 – Aug 15). This file is the readable version, built
+> by mining that transcript directly rather than re-summarizing a summary.
+>
+> **New-session handoff**: see `RESUME_PROMPT.md` in this same directory —
+> a ready-to-paste prompt for starting a fresh Claude Code session on this
+> project.
+
+---
+
+## 1. Aug 6 — initial build
+
+Project started from an uploaded zip (`bike-partpicker-project_2.zip`),
+already carrying a phased build plan and a `PROJECT_CONTEXT.md` handoff doc
+(itself written from an earlier claude.ai chat where the architecture, the
+compatibility engine, the API, and a frontend mock had already been
+designed — see that file for the original architecture decisions: class-table
+inheritance for parts, append-only price log, closed Postgres enums with no
+fuzzy tolerance between "close" standards).
+
+Worked through the phases (`finish phase 5 then show me the front end`),
+fixing bugs as they surfaced: a builder/my-builds click error, and parts
+selection boxes rendering blacked-out instead of white. Then a multi-day
+gap before the next session.
+
+---
+
+## 2. Aug 11 — phase 7, and the self-hosting decision
+
+Picked back up mid-plan. Two things worth recording:
+
+**The deployment fork.** The user asked, in plain terms, what the practical
+difference was between deploying to their own machine ("route A") versus a
+hosted option ("route B"), whether route A meant giving up the ability to
+keep building features, and whether either route cost anything. Decision:
+**Route A — self-hosted, own machine, via Docker.** This is why the project
+is a Docker Compose stack (db/api/web containers) rather than deployed to a
+cloud host, and it's the reason disk space and Docker health became a
+recurring maintenance concern later in the project (§7).
+
+Phase 7 files were written against that decision once Docker was confirmed
+installed. Session continued into Aug 12 via `Continue from where you left
+off` — background-task notifications from this point on indicate agent runs
+were already part of the workflow.
+
+---
+
+## 3. Aug 12 — the compatibility engine, and how it's supposed to work
+
+The engine's entire scope and philosophy trace to two Aug 12 requests, in
+order:
+
+1. **"compare this site and pc partpicker what is different about them?"**
+   — this comparison is the reason the eventual branding work (§10) treated
+   visual distance from PCPartPicker as non-negotiable, not just an
+   aesthetic preference.
+2. **"first find and list ALL possible compstibility issues a bike has and
+   how we can make a rule for them and i want every one big or small"**,
+   followed shortly by **"implement all 103 and fetch whatever parts you
+   need just to complete the 103 rules from online."** This is the literal
+   origin of the 103-rule catalogue in `COMPATIBILITY_RULES.md` — the
+   number 103 isn't arbitrary, it's the actual count of every real
+   part-to-part constraint on a modern bike that was enumerated in response
+   to this request.
+
+A bug surfaced here too — "why cant i see the list of 86" — from an
+intermediate count before the catalogue was finalized at 103.
+
+Two follow-up threads shaped the schema:
+
+- A plain-English backend explainer, asked for twice ("explain to me like
+  the backend paths are humans and what they are ACTUALLY doing," then "in
+  simpler shorter terms") — establishing early that architecture
+  explanations needed to be concrete and non-jargon, not just correct.
+- A part-identification discussion: how to give each part a
+  manufacturer-derived code, whether MPN/GTIN would serve that purpose,
+  and — the one that actually stuck — **"i need ONE universal standard
+  thats on ALL the bike parts to describe them,"** with a specific
+  follow-up on which brands lack SRAM UDH support. This is the origin of
+  UDH's outsized role in the schema: `HangerStandard`, the
+  `checkUdhTransmission` rule (R-HGR-01), and the later 99 Spokes work all
+  treat UDH as the closest thing to a real cross-brand standard, because
+  that's the answer this conversation converged on.
+
+---
+
+## 4. Aug 13 — UK market, the accuracy mandate, and the business model
+
+The busiest single day for decisions that are still load-bearing.
+
+**Visual design kicked off**: "lets do thst later, first add pictures,
+change fonts and colours and make the website more colourfull and nice to
+look at," then product imagery. This is upstream of the whole branding
+arc in §10 — the site was deliberately made visually rich before the later
+purple-removal correction, not built minimal from the start.
+
+**UK market, in one line**: "tgis is for uk market," followed by
+"change everything for the uk msrket add vat change spelling and do a full
+schema change with uk only parts with with uk websites canyon etc." This is
+the direct cause of `basePricePence` being VAT-inclusive pence, UK
+spelling throughout, and UK retailers/brands (Canyon named explicitly) as
+the sourcing target ever since.
+
+**"I already own a bike" predates 99 Spokes.** The request to "find
+websites that can populate this website with data of pre existing bikes
+that are factory built like trek bikes and rockrider bikes canyone bikes"
+is from Aug 13 — a full day before 99 Spokes was ever mentioned (§7). The
+user then deliberately deferred population — "dont focus on population YET
+i just want you to focus on building that seperate section first so i can
+tune everything on the site and add more features" — which is why the
+my-bike UI was built as a standalone section before any real bike data
+existed for it.
+
+**The lockout philosophy, stated precisely once and never violated since**:
+"i dont want anything to be locked out BUT the frame as in there should be
+a something next to all the parts saying youre..." — this is the origin of
+the three-severity design (critical/warning/info) rather than a binary
+compatible/incompatible flag. Only physically-impossible fits disappear
+from the list; everything else stays selectable with the exact remedy
+named. Confirmed with a plain "Yes add it."
+
+**The parts-menu redesign**: "where it says the names of the parts make the
+text more minimalistic and make it one section where if i hover over it a
+list of parts shows up" — this is `web/components/PartsMenu.tsx`, the
+hover dropdown that replaced a flatter parts listing.
+
+**The precomputation question, and why the engine is rule-based, not a
+lookup table**: a sequence of questions — how the algorithm actually checks
+compatibility (length/height/width?), whether it could be precomputed so
+nothing needs checking from scratch, and pointedly, "no i meant instead of
+the webpage code checking it why cant there be an algorithm that has a set
+of rules to check whatever part i throw at it" — worked through to the
+current design: a pure function per rule (`checkX(partA, partB) => warning
+| null`), aggregated live per build rather than precomputed and cached.
+Followed by "so according to you all i need to do is populate?" and then
+the actual business ambition stated outright: **"explain it in simple terms
+what i need to do step by step to make this dream of an affiliate marketed
+pc partpicker clone but for bieks website."** The affiliate-marketing goal
+hasn't been implemented yet, but it's the reason UK-retailer sourcing and
+real pricing have mattered as much as they have throughout — this isn't a
+portfolio piece, it's meant to eventually make money on referral links.
+
+**The single most consequential instruction in the whole project**, stated
+after an initial "first i need to verify if the compatibility engine
+works" was refined to something much sharper:
+
+> "no i need to verify if the data is ACCURATE and that you didnt judt make
+> something like a calculator that says 3 plus 2 is 7"
+
+Every provenance field (`dataSource`, `sourceUrl`, `dataNotes`,
+`verifiedAt`/`verifiedBy`), every abstain-on-null design choice in the
+compatibility engine, the entire Shimano/SRAM extraction pipeline, the
+rejection of 99 Spokes as a spec source once its data proved unreliable,
+and the whole manufacturer-verification discipline in the frame-sourcing
+work (§12) trace back to this one line. It is the standing rule for this
+project: **never present a number or a match as fact unless it's been
+checked against something real.**
+
+---
+
+## 5. Aug 13 (later) — verification begins, first real audit
+
+The day closed with the user pushing past a surface-level UI report and
+asking for an actual accuracy check of the engine's data, which set up the
+disk-space/Docker troubleshooting and the 99 Spokes exploration that opens
+Aug 14.
+
+---
+
+## 6. Aug 14 (morning) — infrastructure
+
+C: drive was full, breaking Docker Desktop. Diagnosed and cleared space,
+confirmed Docker came back healthy — this blocked everything else, so it
+came first.
+
+**`npm run schema:apply` was hanging.** Root cause: `npm run X -- args`
+appends `args` to the *end* of a chained command string, so
+`schema:apply -- --name foo` landed `--name foo` on `docker compose up`
+instead of `prisma migrate dev`, which then sat waiting on stdin. Fixed by
+splitting the chain into [scripts/schema-apply.sh](scripts/schema-apply.sh),
+which takes the migration name as `$1` directly.
+
+---
+
+## 7. Aug 14 — 99 Spokes, then the pivot to manufacturer sourcing
+
+"if i upload data to you can you add it to the website as a test?" →
+"use the sample excel sheet on 99 spokes webpage." Getting the actual
+sample file required real digging — "why cant you donwload it" pushed back
+on an early claim that it couldn't be fetched, and the working method
+(SharePoint's `download.aspx?share=<id>` endpoint, not the `?download=1`
+query param) was found by actually testing it rather than asserting it
+wouldn't work.
+
+Once the sample was parsed, its data quality problems became visible
+quickly. The user's response set the direction for the rest of the day:
+**"ok, so instead of inferring or taking in wrong data from 99 spokes lets
+find data from antoher website?"** — followed by "yes start pulling but do
+it at a slow rate so that we have 10 different examples on our website so
+we can finetune everything." This is the origin of the Shimano/SRAM
+manufacturer-sourcing pipeline (§8) — 99 Spokes wasn't abandoned out of
+caution, it was abandoned because the user explicitly refused to accept
+inferred or lower-confidence data once a cleaner source was possible. (It
+was picked back up properly in §12, once a parser bug was found to be
+responsible for a lot of what looked like 99 Spokes' own unreliability.)
+
+"ok so lets solidify the extractor and importer first so that we can throw
+whatever at them" — deliberate sequencing: build reusable, validating
+import tooling *before* mass-pulling data, rather than one-off scripts per
+source.
+
+---
+
+## 8. Aug 14 — Shimano and SRAM, real manufacturer data
+
+Built two extractors, Shimano first, SRAM after ("do shmano completely then
+sram"):
+
+- [scripts/import/extract_shimano.py](scripts/import/extract_shimano.py) —
+  coordinate-based PDF table parsing (pdfplumber) over Shimano's own spec
+  and compatibility PDFs. Fixed along the way: a `despace()` normalizer, a
+  `SERIES_ROW` lookback bug, a duplicate-label suffix collision (`n=2`
+  variable shadowing the column-count variable — renamed to `dup`), and
+  `VALID_MODEL_NO` regex validation to reject junk rows.
+- [scripts/import/extract_sram.py](scripts/import/extract_sram.py) —
+  regex-based HTML scraping of SRAM's server-rendered spec tables. Fixed:
+  loosened `SPEC_TABLE`/`SPEC_ROW` regexes to tolerate `<tr class="...">`
+  instead of requiring bare tags (silently returned zero rows otherwise),
+  and deduplicated the sitemap by model slug (each model was listed twice).
+
+Both feed [scripts/import/import-parts.ts](scripts/import/import-parts.ts),
+a validating importer with per-category `Mapper` functions. Notable bugs
+fixed there: a dispatch collision because SRAM and Shimano share
+model-number prefixes (mappers now keyed with a `-SRAM` suffix, dispatch
+checks `data.source` against `/SRAM/i`); crankset 1x/2x misdetection fixed
+by requiring `chainringTokens.length === 1`, not just a first-token match;
+and a dash-normalizer bug where `"T-Type"` failed to match `"TTYPE"`,
+silently misclassifying every SRAM Flattop chain as Eagle-12.
+
+Result: 11 of 18 part categories now have real, sourced,
+`MANUFACTURER_SPEC` data. Frames/forks/wheelsets/tyres/rear-shocks/
+seatposts/headsets/saddles/stems/handlebars remain thin — 2-4 hand-seeded
+examples each. This is the gap §12 is midway through closing properly.
+
+---
+
+## 9. Aug 14 — the exhaustive bug list, then a five-tier fix pass
+
+**"start sram and after finidhing it makr a list of issues and bugs like
+the schema issue above and i mean EVERY eXISTING ISSUE AND BUG BUT FORGET
+THE SOLVED ONES."** Then, once the list existed: **"ok now go in order of
+all the problems you listed starting from the top with schema gaps all the
+way down to process/operational and make sure you find a solution for each
+and every one of them, the solution cant be guesses, has to be factually
+correct."** Two independent regression-check rounds followed
+("now do an aggresive bug, issue, gap, error check in EVERY part of the
+build end to end so far," then again later, "now recheck for any issues or
+gaps or bugs before we continue") to catch anything the fix pass itself
+had broken.
+
+**Tier 1 — silent wrong-verdict bugs** in `src/compatibility/engine.ts`:
+- `checkUdhTransmission` (R-HGR-01): an unrecorded derailleur mount type was
+  treated identically to "definitely not UDH" — a real SRAM Transmission
+  derailleur imported without this field would pass silently onto a frame
+  it cannot bolt to. Now warns instead, but only when the frame is known
+  non-UDH (unknown-on-UDH-frame is genuinely fine either way).
+- `checkBrakeActuation`/`checkHosePorts` were using `?? true` to guess
+  `isHydraulic`. Changed to explicit `== null` abstain.
+- `checkRotorThickness`/`checkValveHole`/`checkValveLength`/`checkTubeSize`
+  gained `slot` parameters and are now called twice (front + rear) in the
+  aggregator — previously `frontTube ?? rearTube` meant a fine front tube
+  masked a broken rear one.
+- `checkChainringMount`'s `direct` mount-standard list wasn't updated when
+  `SRAM_8_BOLT_ROAD_DM`/`SRAM_8_BOLT_EAGLE_DM` were added to the schema, so
+  mismatches between two direct-mount standards filed under the wrong rule.
+- `checkSteererLength` (R-FRK-01) had a dead ternary —
+  `stem?.lengthMm != null ? 40 : 40`, both branches identical regardless of
+  input. `Stem` genuinely has no clamp-height field, so this is now a
+  stated industry-typical constant with a comment explaining why.
+- A duplicate `checkAxleThread` (old, wrong) and `checkCrankLengthFit`
+  (duplicate of `checkCrankLength`) were deleted rather than patched.
+
+**Tier 2 — price-null propagation.** `basePricePence` made nullable
+(migration `20260814113241_price_nullable`) because manufacturer spec
+sheets carry no RRP. The upgrade-path resolver's `price()`/
+`currentPriceOfSlot()` return `number | null`, and `diff()`/`sumDiffs()`
+propagate null instead of silently computing a wrong number from a missing
+price. Took three independent audit rounds to converge.
+
+**Tier 3 — API robustness**: `toNum()` in `src/routes/parts.routes.ts`
+returns `undefined` on non-finite results (fixed a NaN-slips-through bug);
+9 numeric filter fields changed from exact-match to range matching; list
+route wraps `findMany` for a clean 400 instead of a raw 500; a regression
+caught by an independent review agent — forks' `maxTravel` filter still
+using raw `Number()` after the eq/gte/lte rewrite — was fixed.
+
+**Tier 4 — import pipeline correctness** (covered in §8).
+
+**Tier 5 — secondary/operational**: `auth.routes.ts` catches Prisma P2002
+for a clean 409 instead of a race-condition 500; `builds.routes.ts` retries
+as an update on a P2002 create conflict; `stockAlerts.routes.ts` validates
+inputs and catches P2003; a catch-all JSON 404 handler was added; a real
+`StockAlert.vendor` FK relation was added.
+
+Also two doc/code drift corrections in `COMPATIBILITY_RULES.md`: R-BRK-10
+(pad shape) is a deliberate no-op, now documented as such instead of
+looking like a bug; R-MNT-02's doc claimed `critical`, the code correctly
+implements `info` — the doc was wrong, not the code.
+
+While the audit agents ran, the user asked for a plain breakdown of the
+backend architecture and how it was running — consistent with the Aug 12
+pattern of wanting concrete, non-jargon explanations alongside the work.
+
+---
+
+## 10. Aug 14–15 — branding
+
+"ok, now lets chnage the purple to gold fonts as its too close to pc
+partpicker" — direct continuation of the Aug 12 differentiation goal.
+Went through several rounds of correction (each preserved as standing
+guidance, not just fixed once):
+
+- The header logo was found still using old indigo after the rest of the
+  site had moved to gold/brown ("why is it still purple top left?").
+- Category badge backgrounds are neutral silver/grey — only the **text**
+  is gold/brown per subsystem. An experiment making them dark charcoal was
+  explicitly reverted: "no, only do it for the one header ribbon with the
+  name of the site and navigation, leave everything as it was before I
+  told you to do this." Dark treatment applies **only** to the actual top
+  navigation bar.
+- `chassis` (gold `#b45309`) and `contact` (brown `#78350f`) stay visually
+  distinct — never collapse them into one shared color, since that's the
+  category color-coding system.
+- Homepage: removed the full 27-tile category grid — "I don't want parts
+  listed or categories on the front page, I want more ABOUT the site."
+  Replaced with a "Why this exists" section.
+- A custom SVG chain-link logo (user-supplied) was integrated as
+  `web/components/Logo.tsx`.
+
+---
+
+## 11. Aug 15 — full test coverage, all 103 rules
+
+"so youre saying right now 65 of the 103 rules cant be applied?" led to a
+methodology discussion ("ok, so how would you actually give test coverage
+to those rules?"), approval ("yes"), then explicit instruction to move
+fast through the rest ("yes and finish fast").
+
+Methodology: `comm -23` between the rule IDs in `COMPATIBILITY_RULES.md`
+and the rule IDs actually asserted with an explicit ID
+(`blocks()`/`warns()`, not a bare `fits()`) in `engine.test.ts` — the only
+trustworthy coverage metric, since a rule can be called in a test without
+its ID ever being checked. Worked through five batches, fixing two real
+bugs found while writing tests rather than testing around them (the
+`checkSteererLength` dead ternary from §9, tier 1; the R-MNT-02 doc/code
+drift). One self-caught test-writing mistake: an R-SHK-06 "fits" case used
+guessed numbers that didn't actually land within tolerance — recomputed
+exactly before fixing.
+
+**Final state: 127 tests, 0 failures.** Every one of 103 rule IDs has
+direct coverage except `R-FIT-04`, intentionally retired in the doc in
+favor of `R-CRK-04` (a same-behavior duplicate never wired into the
+aggregator) — the behavior *is* tested, under its real ID.
+
+---
+
+## 12. Aug 15 — the 99 Spokes investigation, properly this time
+
+Picked back up with "explain our 99 spokes issue in as few words as
+possible," then "can we find a key to decode them or can you try make a
+key?" This required re-fetching the original sample file — recovered by
+**grepping this session's own raw JSONL transcript** in response to a
+direct question, "can you not scroll through this chat regardless of
+context reset?" (Answer: yes, deliberately, by reading the transcript file
+directly — it isn't auto-reloaded, but it persists and can be searched.)
+The file itself was still sitting, already unzipped, in scratchpad from
+the Aug 14 work.
+
+### 10.1 The premise was wrong
+
+The blocker on record: "99 Spokes uses internal shorthand like
+`Hanger Standard: 119`, and ambiguous `BB86/BB92`." Re-parsing properly
+found that **`Hanger Standard: 119` never existed.** xlsx cells with no
+value are self-closing (`<c r="W2" s="2"/>`) — a hand-rolled regex that
+required a closing `</c>` ran straight through the empty cell and captured
+the *next* column's shared-string index instead. `119` was
+`sharedStrings[119]` = `"Rigid"`, the Suspension Configuration value from
+the column next door. Parsed correctly, the Hanger column contains exactly
+one real value: `"udh"`, present on 48 of 277 rows.
+
+### 10.2 The real problem, and the decode key
+
+Every component spec ships twice: `[Raw]` (manufacturer's own text) and
+`[Standard]` (99 Spokes' own normalized label). The normalized column is
+lossy and, on 6 rows, outright wrong — Canyon's 2025 Grizl 5 raw text says
+press-fit PF86 twice, and `[Standard]` says `"BSA"` (threaded), traced to
+their normalizer matching a bare model number and overriding the explicit
+text in the same string.
+
+Built [scripts/import/99spokes-key.ts](scripts/import/99spokes-key.ts):
+reads `[Raw]`, treats `[Standard]` only as a cross-check. Abstains rather
+than guesses whenever raw text names a family without a shell width — 30
+Trek rows say "T47 threaded, internal bearing" with no number, and the
+tempting guess (`T47_68`) would have been wrong on all 30 (internal T47 is
+85.5mm, a width our enum doesn't contain).
+
+A follow-up question ("why couldn't you decode the other 159?") caught a
+real bug in the key while answering it: `"FSA BB86 Alloy Cups"` names its
+standard outright, but the width was being extracted and then discarded
+because both branch guards required a fitment keyword this string never
+used. Fixed. Coverage: 118 → 119/277.
+
+### 10.3 Recasting 99 Spokes as catalogue, not spec source
+
+"why are you limiting yourself to 99 Spokes for specs — just use it for
+model names and fetch specs from any other trusted sources." Measured
+directly: of the 27 `Frame` fields the compatibility engine reads, the
+export touches 4, partially. The other 23 exist nowhere in the file. 99
+Spokes is the index (277 bikes, real model names, build specs); manufacturer
+geometry pages are the spec source. 277 bikes collapse to 32 (maker,
+family) sourcing groups.
+
+### 10.4 The spine extractor, and a grouping bug caught early
+
+Model switched Opus → Sonnet mid-investigation ("stop. i want to use
+sonnet," then "continue sonnet and pick up where left off with opus") —
+the new session picked up cleanly from existing scratchpad state.
+
+Built [scripts/import/xlsx-reader.ts](scripts/import/xlsx-reader.ts) (the
+corrected, dependency-free xlsx reader — matches `<c>` elements generically,
+attributes in any order) and
+[scripts/import/extract_99spokes.ts](scripts/import/extract_99spokes.ts)
+(produces `bikes.json` + `platforms.json`, deliberately not filling `Frame`
+fields).
+
+First run grouped by `(maker, family)` alone. Before sourcing anything,
+checked the top platforms for internal BB consistency and found Cannondale
+Topstone and Synapse both internally inconsistent — "family" isn't reliably
+one physical frame. Reworked to group by `(maker, family, material,
+suspension)`: 32 families → **54 real sourcing units**, 16 of the original
+32 span more than one mould.
+
+### 10.5 Sourcing five platforms, and a near-miss
+
+"switch to opus and decode the hanger/BB columns and everything else and
+before you change the website, show me the results" — sourced full frame
+specs for the five largest single-mould units (54 bikes) from Canyon,
+Cannondale, and Trek's own pages.
+
+**The near-miss**: the file's decode for aluminium Canyon Grizl's BB was
+`BB86`, corroborated by four independent component brands across both
+model years. Canyon's *current* product page said `"SRAM T47 Road wide"` —
+a direct contradiction. It would have been wrong to trust it: Canyon
+redesigned the aluminium Grizl for 2026, and the live page describes that
+redesign, not the 2024/2025 bikes in the sample. **Standing rule**: a
+manufacturer's current page isn't automatically right for a specific model
+year — check the generation matches before letting it override a
+corroborated file answer.
+
+Final sourcing state:
+
+| Platform | Material/Susp. | Bikes | Status |
+|---|---|---|---|
+| Canyon Grizl CF | Carbon/Rigid | 12 | **Ready** |
+| Canyon Grizl 6 | Aluminium/Rigid, MY24-25 only | 9 | Ready, 2 optional fields open |
+| Cannondale Topstone (alloy) | Aluminium/Rigid | 15 | Ready, 1 optional field open |
+| Cannondale Synapse Carbon | Carbon/Rigid, MY2025 only | 5 | Nearly ready — seatpost diameter unconfirmed |
+| Trek Checkpoint SL | Carbon/Rigid, Gen 3 | 13 | Blocked — needs `T47_INTERNAL_85_5` enum value |
+
+**36 bikes are import-ready today.** Nothing has been written to the
+database — this is sourced, verified data staged for review.
+
+---
+
+## 13. Current task list (superseded by §14 — kept for history)
+
+Completed: Shimano/SRAM sourcing, the validating importer, all five bug-fix
+tiers, full 103-rule test coverage, the 99 Spokes spine extractor, the
+five-platform sourcing pass.
+
+Open (as of end of the Aug 15 session — see §14 for what actually shipped):
+- **Add `T47_INTERNAL_85_5`** to `BbShellStandard` (+ migration). Unblocks
+  Trek Checkpoint SL (13 bikes).
+- **Resolve 3 open fields**, then write `Frame` rows for the 5 sourced
+  platforms and wire `bikes.json` into the my-bike section.
+- **Continue sourcing** the remaining ~27 platforms, same methodology.
+- **Populate 10 examples per category + 10 sample bikes**, once enough
+  platforms are sourced.
+- **End-to-end scenario testing** against real data (distinct from the
+  unit test coverage already done in §11).
+
+---
+
+## 14. Aug 15 (new-account continuation) — the five platforms go live
+
+Picked up via `RESUME_PROMPT.md` on a fresh account (model switched
+Opus → Sonnet mid-session, same pattern as §12.4 — the new session read the
+resume prompt, then `SESSION_LOG.md` in full, before touching anything).
+Worked the four "immediate next steps" from §13 in order.
+
+**Step 1 turned out already done.** `BbShellStandard.T47_85_5` (not
+`T47_INTERNAL_85_5` — the resume prompt's own working name, not the actual
+enum member) already existed, with its own migration
+(`20260815140531_add_t47_85_5_bb_shell`) and `src/types/parts.ts` updated to
+match. This had evidently landed in the stretch of the original session
+between the sourcing pass and the write-up — the session log just hadn't
+caught up. Worth noting for future handoffs: **check git/migration state
+directly before trusting a "next steps" list**, even one written minutes
+earlier in the same project.
+
+**Step 2 — the three open fields, resolved by actually going and checking,
+not by guessing:**
+
+- **Canyon Grizl 6 (alloy) `maxTyreWidthMm`**: 50mm, not the 54mm the
+  original pass had flagged as MY2026-only. Corroborated by two independent
+  MY2024-dated sources (opticycles.com's dated model page, general 2024
+  reviews) rather than the current redesigned page.
+- **Canyon Grizl 6 (alloy) `hangerStandard`** and **Cannondale Topstone
+  (alloy) `hangerStandard`**: genuinely could not be confirmed after real
+  searching. Every "UDH" result for either bike turned out to describe a
+  different frame — the Grizl **CF** (carbon, already separately confirmed)
+  or the 2026 Grizl AL redesign for Canyon; the all-new 2025 **Topstone
+  Carbon** redesign for Cannondale (road.cc: "revamped Topstone Carbon
+  gravel bike") rather than the alloy frame these bikes actually use.
+  Left `null`. This is the "abstain rather than guess" rule working as
+  designed, not an unfinished task — see the near-miss in §12.5 for why
+  that distinction matters here specifically.
+- **Cannondale Synapse Carbon (MY2025) `seatpostDiameterMm`**: resolved to
+  `null`, not 27 or 27.2mm as the original "27 or 27.2? unconfirmed" note
+  had framed it. The 2025 Synapse doesn't have an ambiguous *round*
+  diameter to pin down — it replaced its round 27.2mm post entirely with a
+  proprietary D-shaped aero post (shared design language with SuperSix
+  Evo), part of a flattened-seat-tube redesign. A standard round seatpost
+  does not fit this frame at all. `null` correctly signals "not a standard
+  round post," not "unknown but probably normal" — a real distinction the
+  schema doesn't yet have a field to state more directly.
+
+**Step 3 — `Frame` rows written**, via a new script,
+[scripts/import/import-sourced-frames.ts](scripts/import/import-sourced-frames.ts).
+Deliberately **not** added to `prisma/seed.ts`, which is explicitly labelled
+demo data (invented geometry, mechanically-converted USD prices) — these
+five are real sourced platforms and needed their own idempotent script,
+mirroring how Shimano/SRAM go through `import-parts.ts` rather than the demo
+seed. Every field carries the same stated/derived confidence distinction
+used throughout this project, recorded in each `Part.dataNotes`.
+`msrpPence` was deliberately left `null` for all 54 bikes rather than
+converting 99 Spokes' USD prices to a UK RRP — that conversion would mean
+inventing an exchange rate and retail markup, exactly the kind of number
+this project's provenance system exists to rule out.
+
+**Step 4 — the 99 Spokes bike index, wired in the way that turned out to
+already fit.** Before writing any code, checked how `BikeModel` /
+`BikeModelPart` / the `/bikes` routes actually work
+(`src/routes/bikes.routes.ts`, `web/app/my-bike/[buildId]/page.tsx`): a
+`BikeModel` is a specific SKU that clones into a full `Build`, and the
+upgrade view (`app/my-bike/[buildId]/page.tsx`) was **already built** to
+show a slot as "not fitted" and let the user pick from scratch when the
+factory spec doesn't cover it — this is exactly the shape a frame-only bike
+needs, with no code changes required to the upgrade flow itself. So "wiring
+the index in" meant: give each of the 54 sourced bikes its own `BikeModel`
+row (real brand/model/year/trim names, taken directly from `bikes.json`,
+not invented) with exactly one `BikeModelPart` — its frame. The other ~223
+bikes in the 99 Spokes export were deliberately **not** added as
+`BikeModel` rows: without sourced frame data they'd either need an empty
+parts list (a `BikeModel` whose entire designed purpose is "a build with
+every slot filled" — see `bikes.routes.ts`'s own header comment — sitting
+at zero) or invented specs, and neither is honest. The "next steps" list in
+§13 read, on a second pass, as scoped to the 54 already-sourced bikes
+specifically, not literally all 277 — worth flagging explicitly in case
+that reading is wrong.
+
+Verified end-to-end rather than assumed working: rebuilt the Docker web
+image (copy change to `app/my-bike/page.tsx`, since the containers run a
+production build with no dev-mode volume mount — a source edit alone does
+nothing until rebuilt), confirmed all 54 bikes appear via
+`GET /bikes?q=...`, and ran a full register → clone → validate pass against
+a live test account for the Trek Checkpoint SL platform: the clone created
+a one-part `Build`, and `/builds/:id/validate` returned
+`compatible: true` with a single harmless `info`-level R-MNT-05 warning (no
+rack/fender eyelets — correct, since `hasEyelets` defaults `false` and
+wasn't set). Also spot-checked `checkBbShellMatch`/`checkBbShellWidth`
+(R-BB-01/R-BB-03) against the new `T47_85_5` frame: R-BB-01 only compares
+enum names, so it needs no width; `bbShellWidthMm` is `Int` and can't hold
+85.5 anyway, so it's left `null` on all five frames' 86/68mm-class shells
+too where the width would just duplicate what the standard enum already
+states, consistent with how `import-parts.ts` already leaves it `null` on
+shell mismatches.
+
+**End state**: 5 real frame platforms in the database (up from 0 written,
+though all 5 were fully sourced and staged as of §12.5), 54 real bikes
+searchable and clonable in the "I already own a bike" flow. 3 previously
+open fields closed — 2 by finding a real answer, 1 by finding out there
+isn't a round-diameter answer to find. `RESUME_PROMPT.md`'s "immediate next
+steps" list has been rewritten to point at what's next now (continue
+sourcing the remaining ~27 platforms; §13's other still-open items).
+
+---
+
+## 15. Files this project has created or substantially changed
+
+**New**: `scripts/import/99spokes-key.ts`, `scripts/import/xlsx-reader.ts`,
+`scripts/import/extract_99spokes.ts`, `scripts/schema-apply.sh`,
+`web/components/Logo.tsx`, `web/app/icon.svg`, `RESUME_PROMPT.md`,
+this file.
+
+**Substantially changed**: `src/compatibility/engine.ts`,
+`src/compatibility/engine.test.ts` (39 → 127 tests),
+`src/routes/{parts,auth,builds,stockAlerts}.routes.ts`, `src/index.ts`,
+`prisma/schema.prisma`, `web/app/page.tsx`, `web/app/layout.tsx`,
+`web/tailwind.config.ts`, `web/lib/categories.ts`,
+`web/components/PartsMenu.tsx`, `COMPATIBILITY_RULES.md`.
+
+**Working data (scratchpad, not committed — needed to reproduce/continue)**:
+the 99 Spokes sample (`s1.xlsx`, unzipped in `x/`), extractor output
+(`99spokes-out/{bikes,platforms}.json`), Shimano/SRAM raw PDFs/HTML/JSON.
+Path: `C:\Users\abdul\AppData\Local\Temp\claude\C--Users-abdul--claude\3dc59922-eb6d-4182-a676-4dab830a2257\scratchpad\`
+— this is session-scoped and may not survive indefinitely; anything still
+needed should be copied into the repo before it's relied on long-term.
+
+**Published artifacts (private, this session)**:
+- 99 Spokes decode findings — `https://claude.ai/code/artifact/5c76d58c-52ef-48d6-8880-745712034424`
+- Five-platform sourcing report — `https://claude.ai/code/artifact/1e3aa079-b647-4f2e-8653-0a0b2465178d`

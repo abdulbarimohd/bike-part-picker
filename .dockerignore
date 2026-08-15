@@ -1,0 +1,15 @@
+node_modules
+dist
+web
+dev-server
+.env
+.env.*
+!.env.example
+*.log
+.git
+.gitignore
+Dockerfile
+docker-compose.yml
+.dockerignore
+PROJECT_CONTEXT.md
+BikeBuilderMock.jsx

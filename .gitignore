@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.next/
+*.log
+
+# Secrets
+.env
+.env.local
+.env.*.local
+!.env.example

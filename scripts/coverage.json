@@ -1,0 +1,242 @@
+﻿{
+  "combosTested": 3224,
+  "distinctRulesFired": 59,
+  "fired": {
+    "R-AXL-01": {
+      "count": 60,
+      "example": "critical: Rear axle spacing mismatch"
+    },
+    "R-AXL-03": {
+      "count": 180,
+      "example": "info: Check thru-axle thread pitch"
+    },
+    "R-BB-01": {
+      "count": 24,
+      "example": "critical: Bottom bracket shell mismatch"
+    },
+    "R-BB-02": {
+      "count": 24,
+      "example": "critical: Spindle diameter mismatch"
+    },
+    "R-BB-03": {
+      "count": 24,
+      "example": "critical: Bottom bracket shell width mismatch"
+    },
+    "R-BRK-03": {
+      "count": 72,
+      "example": "warning: Adapter needed for the front rotor"
+    },
+    "R-BRK-04": {
+      "count": 24,
+      "example": "critical: Front rotor exceeds fork maximum"
+    },
+    "R-BRK-05": {
+      "count": 20,
+      "example": "critical: Rotor mount mismatch"
+    },
+    "R-BRK-06": {
+      "count": 12,
+      "example": "warning: External lockring may not clear this hub"
+    },
+    "R-BRK-07": {
+      "count": 24,
+      "example": "critical: Brake fluid types incompatible"
+    },
+    "R-BRK-08": {
+      "count": 28,
+      "example": "critical: Lever and caliper are different systems"
+    },
+    "R-BRK-09": {
+      "count": 12,
+      "example": "critical: Hydraulic and mechanical mismatch"
+    },
+    "R-CHR-02": {
+      "count": 364,
+      "example": "critical: Chainring interface mismatch"
+    },
+    "R-CHR-03": {
+      "count": 8,
+      "example": "warning: Ring offset likely wrong for Boost"
+    },
+    "R-CKP-01": {
+      "count": 8,
+      "example": "critical: Stem and bar clamp diameter mismatch"
+    },
+    "R-CRK-01": {
+      "count": 16,
+      "example": "warning: Chainline mismatch"
+    },
+    "R-CRK-02": {
+      "count": 168,
+      "example": "critical: Chainring too large for frame"
+    },
+    "R-CRK-04": {
+      "count": 390,
+      "example": "info: Crank length outside typical range for your inseam"
+    },
+    "R-DRV-01": {
+      "count": 8,
+      "example": "critical: Shifter and derailleur actuation mismatch"
+    },
+    "R-DRV-03": {
+      "count": 16,
+      "example": "critical: Electronic and mechanical cannot mix"
+    },
+    "R-DRV-04": {
+      "count": 52,
+      "example": "critical: Cassette too large for derailleur"
+    },
+    "R-DRV-07": {
+      "count": 208,
+      "example": "critical: Chain and cassette speed mismatch"
+    },
+    "R-DRV-08": {
+      "count": 12,
+      "example": "critical: Chain brand mismatch at 12-speed"
+    },
+    "R-DRV-09": {
+      "count": 24,
+      "example": "warning: Chain may be too short"
+    },
+    "R-DRV-10": {
+      "count": 12,
+      "example": "critical: Shifter and cassette speed mismatch"
+    },
+    "R-FD-03": {
+      "count": 4,
+      "example": "warning: Chainring too large for front derailleur"
+    },
+    "R-FD-04": {
+      "count": 12,
+      "example": "warning: Front derailleur speed mismatch"
+    },
+    "R-FH-01": {
+      "count": 12,
+      "example": "critical: Freehub body mismatch"
+    },
+    "R-FH-04": {
+      "count": 12,
+      "example": "critical: Freehub body mismatch"
+    },
+    "R-FIT-01": {
+      "count": 780,
+      "example": "warning: Frame size may not suit your height"
+    },
+    "R-FIT-02": {
+      "count": 390,
+      "example": "warning: Insufficient standover clearance"
+    },
+    "R-FRK-02": {
+      "count": 120,
+      "example": "critical: Fork travel exceeds frame rating"
+    },
+    "R-FRK-03": {
+      "count": 200,
+      "example": "warning: Axle-to-crown outside design window"
+    },
+    "R-HGR-01": {
+      "count": 4,
+      "example": "critical: Transmission derailleur needs a UDH frame"
+    },
+    "R-HGR-02": {
+      "count": 12,
+      "example": "critical: Derailleur hanger mismatch"
+    },
+    "R-HS-02": {
+      "count": 160,
+      "example": "critical: Headset cup standard mismatch"
+    },
+    "R-MNT-01": {
+      "count": 4,
+      "example": "critical: Chain guide mount mismatch"
+    },
+    "R-MNT-05": {
+      "count": 1560,
+      "example": "info: No rack or fender eyelets"
+    },
+    "R-MNT-06": {
+      "count": 24,
+      "example": "warning: Needs compressionless housing"
+    },
+    "R-PDL-02": {
+      "count": 8,
+      "example": "critical: Flat shoes with clipless pedals"
+    },
+    "R-PDL-03": {
+      "count": 8,
+      "example": "critical: Shoe sole drilling does not match cleat"
+    },
+    "R-SHK-01": {
+      "count": 32,
+      "example": "critical: Shock size does not match frame"
+    },
+    "R-SHK-02": {
+      "count": 20,
+      "example": "critical: Shock mount type mismatch"
+    },
+    "R-SHK-03": {
+      "count": 20,
+      "example": "critical: Shock hardware width mismatch"
+    },
+    "R-SHK-05": {
+      "count": 24,
+      "example": "warning: Check reservoir clearance"
+    },
+    "R-SHK-06": {
+      "count": 8,
+      "example": "warning: Coil spring rate likely wrong"
+    },
+    "R-SHK-07": {
+      "count": 4,
+      "example": "info: Frame not ideal for a coil shock"
+    },
+    "R-SP-01": {
+      "count": 24,
+      "example": "critical: Seatpost diameter mismatch"
+    },
+    "R-SP-02": {
+      "count": 12,
+      "example": "critical: Dropper routing does not match frame"
+    },
+    "R-SP-03": {
+      "count": 36,
+      "example": "critical: Seatpost too long to insert fully"
+    },
+    "R-SP-04": {
+      "count": 18,
+      "example": "info: Dropper travel may exceed your usable range"
+    },
+    "R-SP-05": {
+      "count": 12,
+      "example": "critical: Seat clamp diameter mismatch"
+    },
+    "R-SP-06": {
+      "count": 12,
+      "example": "critical: Saddle rail type mismatch"
+    },
+    "R-TIR-02": {
+      "count": 72,
+      "example": "critical: Rear tire too wide for frame"
+    },
+    "R-TIR-03": {
+      "count": 84,
+      "example": "warning: Tire width outside the rim's recommended range"
+    },
+    "R-TIR-04": {
+      "count": 28,
+      "example": "critical: Tire not approved for hookless rims"
+    },
+    "R-TIR-06": {
+      "count": 12,
+      "example": "critical: Valve type does not match rim drilling"
+    },
+    "R-TIR-08": {
+      "count": 16,
+      "example": "warning: Tube outside the tire width range"
+    },
+    "R-TIR-09": {
+      "count": 52,
+      "example": "warning: Tire may measure wider than nominal on this rim"
+    }
+  }
+}
