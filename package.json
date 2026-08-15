@@ -4,6 +4,7 @@
   "private": true,
   "description": "Bike PartPicker API — Express + Prisma + PostgreSQL",
   "scripts": {
+    "postinstall": "prisma generate",
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "test": "tsx --test src/**/*.test.ts",
