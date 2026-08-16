@@ -108,6 +108,15 @@ const NEW_PARTS: NewPartSpec[] = [
   // ===== HEADSET =====
   {
     category: PartType.HEADSET, relation: 'headset',
+    brand: 'Cannondale', name: 'K35010 Cannondale 1-1/8 to 1.5 Integrated Headset',
+    dataSource: 'RETAILER_LISTING',
+    sourceUrl: 'https://www.cannondalespares.com/browse_by_model/SuperSix-EVO-SE-1---Black-Cherry--C17253U- ; https://www.cannondalespares.com/Cannondale-Topstone-Carbon-Headset--K35010/product_detail/3-45468',
+    dataNotes: 'CannondaleSpares.com (authorized UK parts retailer, model-specific exploded-diagram pages) lists K35010 for both SuperSix EVO SE1 (C17253U) and SE2 (C17272U). Page states upper bearing 41.8mm OD (IS42) and lower bearing, independently verified directly on the K35010 product page itself, as "Elite Headset R438, 40 x 51.8 x 8mm, IS52" -- both fields solidly sourced. crownRaceDiameterMm deliberately NOT populated: the page also states "36 Deg Crown Race", which on direct re-verification is a bevel/contact ANGLE (degrees), not a diameter in mm -- an earlier draft of this finding wrote that number into a millimeter-diameter field, which the adversarial verify pass correctly caught and rejected as a unit-mismatched fabrication. stackHeightMm not stated anywhere found.',
+    fields: { upperStandard: 'IS42', lowerStandard: 'IS52' },
+    bikes: [{ slug: 'cannondale-supersix-evo-se-1-2024' }, { slug: 'cannondale-supersix-evo-se-2-2024' }],
+  },
+  {
+    category: PartType.HEADSET, relation: 'headset',
     brand: 'Cannondale', name: 'K35061 Cannondale S6 Delta 1-1/8 to 1.5 Internal Headset',
     dataSource: 'RETAILER_LISTING',
     sourceUrl: 'cannondalespares.com platform pages for Synapse Carbon 2025 & SuperX 2025; cyclinic.com.au replacement-bearing listing for K35061 (IS41.8/IS52)',
