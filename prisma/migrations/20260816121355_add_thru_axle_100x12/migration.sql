@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "AxleType" ADD VALUE 'THRU_AXLE_100x12';

@@ -115,6 +115,14 @@ enum AxleType {
   THRU_AXLE_157x12_SUPERBOOST
   THRU_AXLE_110x15_BOOST
   THRU_AXLE_100x15
+  /// 12mm-diameter front thru-axle at 100mm spacing -- the standard
+  /// front axle on virtually every modern disc-brake road/gravel bike
+  /// (Trek/Cannondale/Canyon spec sheets all state "12x100mm thru-axle").
+  /// Confirmed missing from the schema while sourcing trim-level forks
+  /// and wheelsets: THRU_AXLE_100x15 is a 15mm-diameter MTB standard
+  /// (wrong diameter), and no THRU_AXLE_*x12 value at 100mm spacing
+  /// existed until now. Do not confuse with THRU_AXLE_100x15.
+  THRU_AXLE_100x12
   QUICK_RELEASE_130x9
   QUICK_RELEASE_135x9
   QUICK_RELEASE_100x9
