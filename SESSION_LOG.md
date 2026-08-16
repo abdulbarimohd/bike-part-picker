@@ -1,4 +1,4 @@
-# Session log — Bike PartPicker (2026-08-06 → 2026-08-15+)
+# Session log — Bike PartPicker (2026-08-06 → 2026-08-16+)
 
 A durable, written record of the entire project history in Claude Code, not
 just the most recent stretch — why things are the way they are, in the
@@ -629,3 +629,112 @@ needed should be copied into the repo before it's relied on long-term.
 **Published artifacts (private, this session)**:
 - 99 Spokes decode findings — `https://claude.ai/code/artifact/5c76d58c-52ef-48d6-8880-745712034424`
 - Five-platform sourcing report — `https://claude.ai/code/artifact/1e3aa079-b647-4f2e-8653-0a0b2465178d`
+
+---
+
+## 16. Aug 16 — production deploy fixed, competitor comparison, trim-level stock builds
+
+**Production deploy, actually fixed.** `bike-part-picker.vercel.app` had
+been serving a broken/stale build. Root causes, found and fixed in order:
+a `"web."` (trailing period) typo in Vercel's Root Directory project
+setting; the live deployment separately running Vercel's `Framework: Node`
+preset instead of Next.js, fixed by redeploying with current project
+settings; and the real culprit underneath both — `NEXT_PUBLIC_API_UR` was
+genuinely misspelled in the Vercel env vars (missing the final `L`), so the
+frontend always fell back to `localhost:4000` no matter what else was
+fixed. Backend deployed to Railway (project `bike-partpicker-api`,
+service `api`, id `8664dc33-662d-47e1-8b6a-d9ea5d7d4ff0`) with the local
+Postgres data restored via `pg_dump`/`psql` through an SSH tunnel (two
+restore passes needed — the plain-SQL dump's alphabetical table order put
+some FK-child tables before `Part`, so the first pass's FK-violating
+inserts succeeded on the second).
+
+**Two accidental duplicate projects exist and are not yet cleaned up**:
+a second Railway project also named `bike-partpicker-api`
+(id `521d1dc7-a5f9-49c8-b01d-9bb47cc059a7`, created by a subagent that
+picked up the `use-railway` skill despite being told not to touch Railway
+— the skill auto-installs globally and any later subagent in the same
+session can trigger it unprompted) and a second Vercel project named
+`web` (created by `vercel link --yes` run from inside `web/` instead of
+the repo root). The **live**, correct Railway project is
+`574b2eb8-c15f-41c5-915a-aa34b9d9e195` — confirmed by its `api` service's
+resolved `DATABASE_URL` pointing at `postgres-k0mx.railway.internal`, the
+`Postgres-k0MX` database (not the same project's other, unused `Postgres`
+service, which also exists and shouldn't be confused for the live one).
+
+**Competitor comparison** (`bikepartpicker.net` vs this site) was done
+with independently-verified findings (not taking the prompt's own framing
+at face value) and produced an explicit 8-item priority list. All 8 were
+solved in one pass: backend deployed with real data (above); the one
+contradictory competitor claim resolved with actual network evidence
+rather than picked arbitrarily; a "Why is this blocked?" affordance added
+to `BuilderMatrix.tsx` (lazy-loaded per slot, only fetches `explain=1` on
+click); SEO/reference pages built entirely from live engine output
+(`/compatibility`, `/compatibility/rules`, `/compatibility/rules/:id`,
+`/compatibility/[category]/[id]`) plus a "Compatibility FAQ" section on
+part detail pages; a `PartBundle` schema added for future groupset-bundle
+pricing (deliberately left at 0 rows — no bundle data has been sourced
+yet, adding the table isn't the same as populating it); 4 more real frame
+platforms sourced (Cannondale SuperSix EVO SE, Synapse Carbon, SuperX
+Carbon; Trek Checkmate SLR — on top of the 5 already in the DB from §14);
+and one real bug fixed (`web/app/parts/[category]/[id]/page.tsx`'s price
+chart was interpolating raw pence into `£${v}` instead of running it
+through `formatGbp`).
+
+**Trim-level stock-build population.** Every `BikeModel` row up to this
+point had exactly one linked part — its frame (see §14's closing note:
+frame-level sourcing only, deliberately). The user asked to go trim by
+trim and verify full stock builds against real manufacturer spec pages,
+using parallel agents. Six platforms were researched this way — the 4
+frame platforms sourced earlier this same day (SuperSix EVO SE, Synapse
+Carbon, SuperX Carbon, Checkmate SLR) plus Domane AL Gen 4 and Grail
+CF/CF SLX from §14 — covering all 19 of their `BikeModel` trims. Each
+research agent pulled the live rendered DOM of the manufacturer's own
+spec-sheet page per trim (not a WebFetch text-extraction summary — one
+agent explicitly caught and excluded a fabricated "48/31" chainring spec
+that only existed in the AI-summarized pass, not on Canyon's actual page)
+and cross-referenced every named component against the live local
+catalog (`GET /parts/*`) by brand *and* exact model number, not name
+similarity — catching several near-miss traps along the way: SRAM RED
+XG-1391 (13-speed XPLR) vs the catalog's differently-speed-counted
+`CN-RED-E1` chain row; Shimano 105 12-speed `R7100`-series parts vs the
+11-speed `R7000`-series the older Synapse Carbon 5 actually ships;
+Cannondale's "Shimano BSA 68" bottom bracket spec vs the catalog's only
+BSA row being stored at a 73mm shell width; and Shimano Tiagra "4700" vs
+the catalog's differently-numbered `RD-R4000`/`ST-R4020` rows, correctly
+left as non-matches rather than assumed equivalent.
+
+Before writing anything to the database, every one of the 64 proposed
+component links was independently re-verified by a second, adversarial
+pass — six more agents (one per platform), each given the raw research
+text, a full dump of the relevant catalog rows, and the proposed
+`(bikeSlug, category, partId)` mapping, told to reject anything not
+verbatim-confirmable against both sources. Zero rejections; two flagged
+"missed" duplicate catalog rows for the exact same physical chain
+(pre-existing catalog seeding debt — two `Part` rows for one real product
+under slightly different names — correctly left as a single link each,
+not two, since linking both would show the bike as having two chains).
+
+The actual write is `scripts/import/link-trim-components.ts` — same
+idempotent shape as `import-sourced-frames.ts` (`findFirst` before
+`create`, safe to re-run), but linking existing catalog `Part` rows onto
+existing `BikeModel` rows via `BikeModelPart` rather than creating new
+`Part` rows. Run against both the local Docker Postgres and, through the
+same SSH-tunnel pattern as the earlier restore, the live Railway
+`Postgres-k0MX` — 65 links created in both places, 0 already existed, 0
+bikes/parts not found, 0 type mismatches. Verified end-to-end: cloned
+`canyon-grail-cf-7-2026` into a `Build` and loaded `/my-bike/:id]` in a
+browser — cassette, chain, and rear derailleur render as real stock parts
+with brand/model, every other slot honestly shows "not fitted" rather
+than a guess.
+
+**What's still a real gap, not an oversight**: cockpit (handlebar/stem),
+wheelsets, tyres, seatposts, saddles, and most electronic-groupset
+variants (Di2, AXS) are absent from essentially every trim across all six
+platforms — not because they weren't researched, but because the parts
+catalog itself has no road/gravel-specific rows in those categories yet
+(it was hand-seeded from MTB examples early in the project). Populating
+those would mean sourcing and creating new `Part` rows first, the same
+kind of work `import-sourced-frames.ts` did for frames — a separate,
+larger pass, not something this task's linking-only scope could do
+honestly.
