@@ -136,6 +136,19 @@ export default function UpgradePage() {
   const criticalSlots = new Set(warnings.filter((w) => w.severity === 'critical').flatMap((w) => w.components));
   const warnSlots = new Set(warnings.filter((w) => w.severity === 'warning').flatMap((w) => w.components));
 
+  // A rigid frame has no rear-shock interface at all — not "not fitted",
+  // genuinely not a real slot on this bike. Same signal the compatibility
+  // engine already uses to abstain from every R-SHK-* rule (a null
+  // shockEyeToEyeMm means no shock mount exists, not "unsourced" — see
+  // engine.ts). Anchored on the frame's own data, not the header
+  // discipline switch: that's a rider browsing preference, not a fact
+  // about this specific bike, and every current gravel/road frame in the
+  // catalogue already lacks this field the same way a hardtail would.
+  // Guarded on `frame` being loaded so a slow first fetch doesn't flash
+  // the row away before there's data to judge it by.
+  const frame = stock['frame']?.part?.frame;
+  const rearShockNotApplicable = Boolean(frame) && frame.shockEyeToEyeMm == null;
+
   return (
     <div className="max-w-[1400px] mx-auto px-6 py-8">
       <Link href="/my-bike" className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink mb-5">
@@ -202,7 +215,9 @@ export default function UpgradePage() {
             </div>
 
             <div className="rounded-xl border border-black/5 bg-white shadow-card overflow-hidden">
-              {slots.map(({ slot, label, slug, position }, i) => {
+              {slots
+                .filter(({ slot }) => !(slot === 'rearShock' && rearShockNotApplicable))
+                .map(({ slot, label, slug, position }, i) => {
                 const stockPart = stock[slot];
                 const currentPart = current[slot];
                 const isChanged = currentPart?.part?.id !== stockPart?.part?.id;

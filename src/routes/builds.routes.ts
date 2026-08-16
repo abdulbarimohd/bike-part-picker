@@ -55,11 +55,16 @@ router.get('/:id', attachUserIfPresent, async (req, res) => {
   const build = await prisma.build.findUnique({
     where: { id: req.params.id },
     include: {
-      buildParts: { include: { part: true } },
+      // frame: true on both -- the client needs Frame.shockEyeToEyeMm to
+      // tell a rigid bike from a full-suspension one (R-SHK-* already
+      // treats a null value there as "no rear-shock interface exists",
+      // not just "not sourced yet"; the my-bike page uses the same
+      // signal to decide whether Rear Shock is a real slot for this bike).
+      buildParts: { include: { part: { include: { frame: true } } } },
       // The factory spec travels with the build so the upgrade view can
       // compare against it. Deriving "stock" from the first page load
       // instead breaks the moment the user navigates away and back.
-      basedOnModel: { include: { parts: { include: { part: true } } } },
+      basedOnModel: { include: { parts: { include: { part: { include: { frame: true } } } } } },
     },
   });
 
