@@ -13,6 +13,7 @@ import partsRoutes from './routes/parts.routes';
 import buildsRoutes from './routes/builds.routes';
 import bikesRoutes from './routes/bikes.routes';
 import stockAlertsRoutes from './routes/stockAlerts.routes';
+import compatibilityRoutes from './routes/compatibility.routes';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/parts', partsRoutes);
 app.use('/builds', buildsRoutes);
 app.use('/bikes', bikesRoutes);
 app.use('/stock-alerts', stockAlertsRoutes);
+app.use('/compatibility', compatibilityRoutes);
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 

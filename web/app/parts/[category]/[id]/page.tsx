@@ -16,6 +16,7 @@ import ProvenanceBadge from '../../../../components/ProvenanceBadge';
 import { api } from '../../../../lib/api-client';
 import { formatGbp, exVatPence } from '../../../../lib/money';
 import { CATEGORY_BY_SLUG, GROUPS, accentFor, formatSpecValue } from '../../../../lib/categories';
+import { compatibilityApi, PartCompatibility } from '../../../../lib/compatibility-client';
 
 // Matches `chassis`/`wheel`/`drive` in tailwind.config.ts.
 const CHART_COLORS = ['#b45309', '#059669', '#ea580c'];
@@ -24,6 +25,10 @@ export default function PartDetailPage() {
   const { category, id } = useParams<{ category: string; id: string }>();
   const [part, setPart] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  // Fetched separately from the main part payload, on its own loading
+  // state -- the FAQ block is a nice-to-have addition to the page, not
+  // something the rest of the page (price, specs, vendors) should wait on.
+  const [compat, setCompat] = useState<PartCompatibility | null>(null);
 
   const config = CATEGORY_BY_SLUG[category];
   const { accent, soft, group } = accentFor(category);
@@ -35,6 +40,12 @@ export default function PartDetailPage() {
       .then(setPart)
       .catch(() => setPart(null))
       .finally(() => setLoading(false));
+  }, [category, id, config]);
+
+  useEffect(() => {
+    if (!config) return;
+    setCompat(null);
+    compatibilityApi.getPartCompatibility(category, id).then(setCompat).catch(() => setCompat(null));
   }, [category, id, config]);
 
   if (loading) return <div className="max-w-5xl mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>;
@@ -184,6 +195,31 @@ export default function PartDetailPage() {
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </>
+      )}
+
+      {/* Compatibility FAQ — generated from the real compatibility engine's
+          rule output for this exact part against the real catalogue (see
+          GET /compatibility/parts/:slug/:partId). A part with too little
+          real data to generate anything meaningful just shows nothing here
+          rather than padding the page with invented specifics. */}
+      {compat && compat.faqs.length > 0 && (
+        <>
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-ink mb-3">Compatibility FAQ</h2>
+          <div className="rounded-xl bg-white border border-black/5 shadow-card divide-y divide-black/5 overflow-hidden mb-3">
+            {compat.faqs.slice(0, 6).map((f) => (
+              <div key={f.question} className="px-4 py-3.5">
+                <div className="text-sm font-semibold text-ink mb-1">{f.question}</div>
+                <div className="text-sm text-ink-muted leading-relaxed">{f.answer}</div>
+              </div>
+            ))}
+          </div>
+          <Link
+            href={`/compatibility/${category}/${id}`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-chassis hover:underline mb-8"
+          >
+            See the full compatibility breakdown
+          </Link>
         </>
       )}
     </div>

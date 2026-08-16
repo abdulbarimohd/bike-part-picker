@@ -47,6 +47,11 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 COPY --from=build /app/dist ./dist
+# Read at runtime by src/compatibility/rulesCatalogue.ts (compiled into
+# dist/compatibility/) to drive the compatibility rule-reference API --
+# that module isn't copied in above, only its compiled output, so the
+# source markdown it parses has to be added explicitly.
+COPY COMPATIBILITY_RULES.md ./
 COPY docker-entrypoint.sh ./
 RUN chmod +x docker-entrypoint.sh
 

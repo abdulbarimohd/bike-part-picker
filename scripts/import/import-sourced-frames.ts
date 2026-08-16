@@ -51,6 +51,47 @@
 // the same renewed effort and still came up short of a real source,
 // so that platform (15 bikes) was dropped rather than kept with a gap.
 //
+// AUG 16 PASS (catalogue growth, item 7 of the competitor-comparison
+// priority list): four more platforms added at the end of PLATFORMS
+// below -- Giant Defy Advanced (Carbon), Giant Revolt Advanced
+// (Carbon), Trek Domane SL/SLR Gen 4 (Carbon), Trek Checkpoint ALR
+// Gen 3 (Aluminium). Two things specifically worth flagging from this
+// pass, both caught by the same "don't trust the first search result"
+// discipline the Aug 15 pass established:
+//   - Giant's headset system (both "OverDrive" on Revolt and
+//     "OverDrive 2" on Defy) uses a 1-1/4in lower bearing on road/
+//     gravel frames, confirmed against Giant's own OD2 product specs
+//     (steedcycles.com, shockcraft.co.nz, edgesportsuk.com all agree:
+//     "Road models feature 1 1/8-inch top and 1 1/4-inch bottom
+//     bearings" -- only the MTB variant of OD2 uses 1-1/2in). Neither
+//     Giant platform's headsetTaper is set to TAPERED_1_5_TO_1_125:
+//     that enum value is 1.5in lower, which is simply a different,
+//     wider bearing than what either Giant frame actually has. There
+//     is no enum member for Giant's own pairing, so both are left
+//     null rather than mapped to the closest-sounding wrong answer.
+//   - A first-pass web search for "Trek Domane Gen 4 ... T47 ...
+//     UDH" returned a summary that read as confirming both for Gen 4.
+//     Direct-fetching the actual cited article (road.cc, "Trek
+//     ditches IsoSpeed on new Domane") showed the T47/UDH claim was
+//     about the then-new GEN 5 Domane the article was announcing, in
+//     explicit contrast to Gen 4 -- not a statement about Gen 4 at
+//     all. Gen 4 (the platform actually being sourced here, since
+//     that's what the 2025 bikes in this catalogue are) needed its
+//     own separate, targeted verification: T47 turned out to still be
+//     right for Gen 4 (Trek moved to T47 back at 3rd-gen Domane in
+//     2020, confirmed independently by trainabsolute.com's Gen 4
+//     launch coverage -- "the T47 bottom bracket also continues on"),
+//     but the hanger is NOT UDH on Gen 4 -- it's a Trek-proprietary
+//     part (W524188, per Trek's own MY23 Domane SL/SLR service
+//     manual, cross-referenced by elanusparts' compatibility listing
+//     for "Trek Domane SL / SLR Gen.4 2023"). Trek's Gen 5 redesign
+//     is precisely the kind of same-family-name, different-generation
+//     trap this file's methodology exists to catch -- see the header
+//     paragraph above on grouping by mould, not model name, and the
+//     Grizl-6-vs-2026-redesign and Endurace-CF-vs-CFR cases already
+//     documented below for the same pattern within a single pass
+//     rather than across passes.
+//
 // msrpPence is left null for every bike here. 99 Spokes carries a
 // USD price for some rows, but converting that to a UK RRP would mean
 // inventing an exchange rate and retail markup — exactly the kind of
@@ -676,6 +717,252 @@ const PLATFORMS: Platform[] = [
       { model: 'Allez Comp', year: 2026 },
       { model: 'Allez', year: 2025 },
       { model: 'Allez Sport', year: 2025 },
+    ],
+  },
+  {
+    // Cross-tier check done before trusting this as one mould: Giant's
+    // "Advanced" / "Advanced Pro" / "Advanced SL" suffixes are carbon-
+    // layup/weight tiers, not separate frame shapes, on this platform --
+    // confirmed by pulling Giant's own PDF spec sheets for "Defy
+    // Advanced 1" and "Defy Advanced Pro 1" and finding the geometry
+    // tables identical to the millimetre (same reach/stack/wheelbase/
+    // chainstay across every size, same 38mm tyre limit, same "Shimano,
+    // press fit" BB line) -- and a third source (granfondo-cycling.com's
+    // review of the Advanced SL) independently states the same 38mm
+    // figure for the SL tier too. No CF/CFR-style split found here.
+    brand: 'Giant',
+    frameName: 'Defy Advanced (2025)',
+    sourceUrl: 'https://static.giant-bicycles.com/pdf/giant-defy-advanced-1-en-au-4065.pdf',
+    dataSource: 'MANUFACTURER_SPEC',
+    dataNotes:
+      'CHECKED against two of Giant\'s own PDF spec sheets (Defy Advanced 1) plus a third (Defy ' +
+      'Advanced Pro 1) for the cross-tier check above -- all three agree, word for word in places: ' +
+      'rearAxleType ("12x142mm thru-axle, disc" in the FRAME line), maxTyreWidthMm (38mm, the LIMITS > ' +
+      'MAX TYRE CLEARANCE field on every sheet -- an earlier, less careful fetch of a live product page ' +
+      'returned a stray "40mm" figure that appears nowhere in any of the three official PDFs or in the ' +
+      'granfondo/BikeRadar reviews checked, and was discarded as unreliable rather than used), ' +
+      'wheelDiameter (ISO_622, "Wheel Size 700C" stated in the geometry table), seatpostDiameterMm ' +
+      'LEFT NULL not guessed -- "Giant D-Fuse, composite, 14mm offset" is a shaped, non-round profile, ' +
+      'same reasoning as the Cannondale/Canyon/Trek aero posts elsewhere in this file. bbShellStandard ' +
+      'read as BB86: the PDFs themselves only say "Shimano, press fit" with no width, but Giant\'s own ' +
+      'showcase page states "a fully integrated, 86-millimeter wide bottom-bracket design" for this ' +
+      'exact frame -- bbShellWidthMm left null regardless, matching this file\'s existing convention ' +
+      'that no BB86 frame here sets a separate width. DERIVED: rearBrakeMountType as flat mount -- not ' +
+      'in the PDF spec table, but Giant\'s showcase page states it directly ("engineered specifically ' +
+      'for flat-mount disc-brakes, including front and rear 12mm thru-axles"), a stronger tier than a ' +
+      'class-wide assumption. RESOLVED, not left null: hangerStandard is PROPRIETARY. The 99 Spokes-era ' +
+      'search for "Defy UDH" surfaces nothing conclusive, but two independent parts retailers ' +
+      '(giantbikespares.com\'s hanger RE2660/380000016, and elanusparts\' Pilo D822 cross-reference) both ' +
+      'name the same replaceable-hanger part specifically for "2024 Defy Advanced 1/3, Advanced Pro ' +
+      '0/1/2, Advanced SL 0/1" -- a real part number tied to this exact frame family and generation, ' +
+      'the same pattern that resolved Canyon Grizl 6\'s hanger in the Aug 15 pass. LEFT NULL, not ' +
+      'guessed: headsetTaper -- see the header note above on Giant\'s OverDrive/OverDrive 2 bearing ' +
+      'sizes not matching this schema\'s only tapered enum value.',
+    discipline: 'road',
+    detail: {
+      material: 'CARBON',
+      bbShellStandard: 'BB86',
+      rearAxleType: 'THRU_AXLE_142x12',
+      dropoutType: 'THRU_AXLE',
+      headsetTaper: null,
+      rearBrakeMountType: 'FLAT_MOUNT',
+      wheelDiameter: 'ISO_622',
+      maxTyreWidthMm: 38,
+      hangerStandard: 'PROPRIETARY',
+      seatpostDiameterMm: null,
+    },
+    bikes: [
+      { model: 'Defy Advanced Pro 2', year: 2025 },
+      { model: 'Defy Advanced 0', year: 2025 },
+      { model: 'Defy Advanced Pro 1', year: 2025 },
+      { model: 'Defy Advanced Pro 0', year: 2025 },
+      { model: 'Defy Advanced SL 1', year: 2025 },
+      { model: 'Defy Advanced SL 0', year: 2025 },
+      { model: 'Defy Advanced 2', year: 2025 },
+      { model: 'Defy Advanced 1', year: 2025 },
+    ],
+  },
+  {
+    // "Revolt Advanced" and "Revolt Advanced Pro" cross-checked the same
+    // way as Defy above: Giant's own PDF for "Revolt Advanced Pro 0"
+    // states the same flip-chip dropout, same BB, same 53mm/45mm tyre
+    // figures as the plain "Revolt Advanced 1" product page pulled
+    // separately -- one mould across both tiers, not a hidden split.
+    brand: 'Giant',
+    frameName: 'Revolt Advanced (2025-2026)',
+    sourceUrl: 'https://static.giant-bicycles.com/pdf/giant-revolt-advanced-pro-0-en-us-4134.pdf',
+    dataSource: 'MANUFACTURER_SPEC',
+    dataNotes:
+      'CHECKED directly against Giant\'s own PDF spec sheet (Revolt Advanced Pro 0, 2026 model year --  ' +
+      'see note below on why this is treated as covering the 2025 rows too): rearAxleType ("12x142mm ' +
+      'thru-axle, disc" in the FRAME line), bbShellStandard read as BB86 ("SRAM DUB, press fit" stated ' +
+      'in the spec table; the 86mm width comes from Giant\'s separate showcase page, "fully integrated, ' +
+      '86-millimeter wide bottom-bracket design" -- bbShellWidthMm left null per this file\'s existing ' +
+      'BB86 convention). maxTyreWidthMm recorded as 53mm: the PDF\'s own LIMITS > MAX TIRE CLEARANCE ' +
+      'field states "53mm" directly, which is the frame\'s genuine physical maximum in the "long" flip- ' +
+      'chip dropout position -- the same PDF\'s EXTRAS line spells out both positions explicitly, "53mm ' +
+      'max tire size in \'long\' flip chip position, 45mm max tire size in \'short\' flip chip position" ' +
+      '-- so a tyre between 46-53mm will fit ONLY with the dropout in the long setting, which this ' +
+      'schema has no separate field to flag (unlike the mulletApproved/maxTyreWidthMm650b pair used for ' +
+      'wheel-size alternates elsewhere in this file); recorded as the documented max rather than the ' +
+      'conservative default because that is what the field is literally named and what the PDF\'s own ' +
+      '"LIMITS" section reports as this frame\'s limit. RESOLVED, not left null, and to a stronger tier ' +
+      'than most hangerStandard fields in this file: hangerStandard is PROPRIETARY, and this is not an ' +
+      'inference from a retailer part number -- Giant\'s own PDF states it directly in the FRAME spec ' +
+      'line itself, "flip chip dropout". A cycling-media review (BikeRadar) independently confirms the ' +
+      'current-generation Revolt has NOT moved to UDH ("the current 2025 Giant Revolt Advanced does not ' +
+      'feature UDH dropouts -- it continues to use the flip-chip system"), distinguishing it from an ' +
+      'unreleased UDH prototype the same article describes. Model-year note: the PDF fetched is dated ' +
+      '2026, not 2025, but a live 2025-dated product page (giant-bicycles.com/gb/revolt-advanced-1-2025) ' +
+      'pulled separately states the identical 53mm/45mm flip-chip figures and OverDrive/SRAM DUB specs ' +
+      '-- treated as the same unbroken frame across both model years rather than assumed identical ' +
+      'without checking. DERIVED: rearBrakeMountType as flat mount, stated on Giant\'s showcase page ' +
+      '("flat-mount disc brake integration") rather than the PDF table itself; wheelDiameter as ISO_622 ' +
+      '(700c stated on the product page, not restated in this specific PDF\'s table). LEFT NULL, not ' +
+      'guessed: seatpostDiameterMm -- "Giant D-Fuse SLR, composite" is a shaped, non-round profile, same ' +
+      'reasoning as Defy above; one single weaker source claimed it "alternatively accepts a standard ' +
+      'round 30.9mm seatpost" but that was not corroborated anywhere else and is not recorded as a ' +
+      'number on that single mention alone. headsetTaper also left null -- see the header note above on ' +
+      'Giant OverDrive not matching this schema\'s tapered enum (confirmed directly for this exact model: ' +
+      '"oversized headset bearings (1 1/4in lower and 1 1/8in upper)").',
+    discipline: 'gravel',
+    detail: {
+      material: 'CARBON',
+      bbShellStandard: 'BB86',
+      rearAxleType: 'THRU_AXLE_142x12',
+      dropoutType: 'THRU_AXLE',
+      headsetTaper: null,
+      rearBrakeMountType: 'FLAT_MOUNT',
+      wheelDiameter: 'ISO_622',
+      maxTyreWidthMm: 53,
+      hangerStandard: 'PROPRIETARY',
+      seatpostDiameterMm: null,
+    },
+    bikes: [
+      { model: 'Revolt Advanced 1', year: 2025 },
+      { model: 'Revolt Advanced 3', year: 2025 },
+      { model: 'Revolt Advanced 2', year: 2025 },
+      { model: 'Revolt Advanced 0', year: 2025 },
+      { model: 'Revolt Advanced Pro 1', year: 2025 },
+      { model: 'Revolt Advanced Pro 0', year: 2025 },
+    ],
+  },
+  {
+    // See the header note above (Aug 16 pass) on the Gen 4 vs Gen 5
+    // trap this platform specifically required re-checking for: a
+    // first search conflated Gen 5's T47/UDH announcement with Gen 4,
+    // the generation these 2025-dated bikes actually are. Every field
+    // below was re-verified against Gen-4-specific sources only.
+    brand: 'Trek',
+    frameName: 'Domane SL / SLR Gen 4 (2025)',
+    sourceUrl: 'https://www.trekbikes.com/gb/en_GB/FAQ/domane-sl-slr-rsl-23/',
+    dataSource: 'MANUFACTURER_SPEC',
+    dataNotes:
+      'CHECKED against Trek\'s own Domane SL/SLR/RSL FAQ (the "23" in the URL is the MY23 Gen 4 launch, ' +
+      'not a 2023-only scope -- the FAQ covers the generation these 2025 bikes belong to): rearAxleType ' +
+      '("142 x 12 mm rear", stated directly), rearBrakeMountType ("Flat mount, up to 160 mm both front ' +
+      'and rear", stated directly), seatpostDiameterMm LEFT NULL not guessed -- the FAQ itself describes ' +
+      'a "D-shaped KVF post for improved aerodynamics", a proprietary profile, same reasoning as ' +
+      'Checkmate SLR\'s KVF post elsewhere in this file (explicitly the same design family). ' +
+      'bbShellStandard read as T47_85_5: the FAQ states "T47" without a width; the 85.5mm figure comes ' +
+      'from a Trek-specific source (velo.outsideonline.com\'s T47 explainer, which states Trek partners ' +
+      'with Praxis on an 85.5mm-wide shell across its threaded-BB line, not just this one model) rather ' +
+      'than a Domane-specific quote, and a Trek dealer\'s Gen 4 launch write-up (trainabsolute.com) ' +
+      'independently confirms T47 continued from Gen 3 into Gen 4 ("the T47 bottom bracket also ' +
+      'continues on"). maxTyreWidthMm recorded as 38mm, corroborated four ways: two independent ' +
+      'opticycles.com model pages (SL 6 and SLR 9, both "38c"), road.cc\'s Gen-4-vs-Gen-5 comparison ' +
+      'piece ("Domane was already an all-road bike with space for 38mm tyres", stated of Gen 4 in ' +
+      'explicit contrast to Gen 5\'s 40mm), and trainabsolute.com\'s launch coverage -- the FAQ itself ' +
+      'declines to give a number ("Accurate values can be found in specs on each bike model page"). ' +
+      'RESOLVED, not left null: hangerStandard is PROPRIETARY, not UDH, sourced to a real part number ' +
+      '(W524188) from Trek\'s own MY23 Domane SL/SLR service manual, independently cross-referenced by ' +
+      'elanusparts\' Pilo D781 compatibility listing which explicitly names "Trek Domane SL / SLR Gen.4 ' +
+      '2023" alongside several earlier Domane generations sharing the same hanger shape. wheelDiameter ' +
+      'as ISO_622, 700c stated on the opticycles pages. LEFT NULL, not guessed: headsetTaper -- no ' +
+      'bearing-size figure was found stated anywhere for this platform, only generic "tapered steerer" ' +
+      'wording, which this file treats as insufficient on its own (contrast Checkpoint SL/SLR\'s carbon ' +
+      'platform, which at least had an explicit "1-1/8in upper" figure to derive from).',
+    discipline: 'road',
+    detail: {
+      material: 'CARBON',
+      bbShellStandard: 'T47_85_5',
+      rearAxleType: 'THRU_AXLE_142x12',
+      dropoutType: 'THRU_AXLE',
+      headsetTaper: null,
+      rearBrakeMountType: 'FLAT_MOUNT',
+      wheelDiameter: 'ISO_622',
+      maxTyreWidthMm: 38,
+      hangerStandard: 'PROPRIETARY',
+      seatpostDiameterMm: null,
+    },
+    bikes: [
+      { model: 'Domane SL 6 Gen 4', year: 2025 },
+      { model: 'Domane SL 7 Gen 4', year: 2025 },
+      { model: 'Domane SLR 8 AXS Gen 4', year: 2025 },
+      { model: 'Domane SL 5 Gen 4', year: 2025 },
+      { model: 'Domane SLR 7 AXS Gen 4', year: 2025 },
+      { model: 'Domane SLR 9 AXS Gen 4', year: 2025 },
+      { model: 'Domane SLR 7 Gen 4', year: 2025 },
+      { model: 'Domane SLR 9 Gen 4', year: 2025 },
+    ],
+  },
+  {
+    // The aluminium sibling of the Checkpoint platform already in this
+    // file (Checkpoint SL/SLR, carbon, T47_85_5, UDH) -- a genuinely
+    // separate mould (Alpha 300 aluminium, not carbon), sourced
+    // independently rather than assumed to match the carbon version.
+    // It turns out to land on the same core standards, which is a
+    // real finding (Trek's Gen-3-era gravel line shares one hanger/BB/
+    // axle spec across materials), not an assumption carried over.
+    brand: 'Trek',
+    frameName: 'Checkpoint ALR Gen 3 (2024-2025)',
+    sourceUrl: 'https://www.trekbikes.com/us/en_US/FAQ/checkpoint-alr-gen3/',
+    dataSource: 'MANUFACTURER_SPEC',
+    dataNotes:
+      'CHECKED against Trek\'s own Checkpoint ALR Gen 3 FAQ: dropoutType/hangerStandard as UDH -- the ' +
+      'FAQ states this in practical terms ("Yes, this way you can bolt up any derailleur out there on ' +
+      'the market"), independently corroborated word-for-word by a BikeRadar review of the ALR 5 Gen 3 ' +
+      '("SRAM UDH dropout") -- doubly confirmed, matching the carbon Checkpoint platform already in this ' +
+      'file. maxTyreWidthMm as 50mm, stated on both the FAQ ("up to 50mm gravel tires (as measured)") ' +
+      'and the BikeRadar review ("generous 50mm tyre clearance (or 42mm with mudguards)"). CHECKED ' +
+      'against the BikeRadar review specifically (not re-found on the FAQ page itself): bbShellStandard ' +
+      'read as T47_85_5 -- the review states "threaded T47 bottom bracket" without a width figure; the ' +
+      '85.5mm read is DERIVED from Trek\'s single documented T47 implementation across its line (see the ' +
+      'Domane SL/SLR platform above, sourced independently to the same figure) rather than a number ' +
+      'stated specifically for the ALR -- treat this one field as the weakest on this platform. ' +
+      'rearBrakeMountType as flat mount, stated ("flat-mount disc brakes"). seatpostDiameterMm as ' +
+      '27.2mm, stated ("27.2mm Bontrager alloy seatpost") -- a genuinely round post, unlike most of the ' +
+      'proprietary aero/D-shaped posts found elsewhere in this file. wheelDiameter as ISO_622, 700c ' +
+      'stated. DERIVED: rearAxleType as 142x12 -- not restated for this specific model in anything ' +
+      'found, but confirmed with zero exceptions across every other Trek platform in this file. LEFT ' +
+      'NULL, not guessed: headsetTaper. Multiple dealer listings describe the fork as having a "tapered ' +
+      'steerer" (Trek\'s own spec-feed wording, reproduced verbatim across several retailer sites), but ' +
+      'unlike the carbon Checkpoint platform -- which at least had a partial "1-1/8in upper" figure to ' +
+      'derive from -- nothing found here gives any bearing diameter at all, only the bare word ' +
+      '"tapered"; a search result summary claimed a specific "1-1/8in to 1.5in" figure but that number ' +
+      'could not be re-found in any primary source actually quoted (the retailer page it was checked ' +
+      'against states only "tapered steerer" with no numbers), so it is treated as unverified and not ' +
+      'used.',
+    discipline: 'gravel',
+    detail: {
+      material: 'ALUMINIUM',
+      bbShellStandard: 'T47_85_5',
+      rearAxleType: 'THRU_AXLE_142x12',
+      dropoutType: 'UDH',
+      headsetTaper: null,
+      rearBrakeMountType: 'FLAT_MOUNT',
+      wheelDiameter: 'ISO_622',
+      maxTyreWidthMm: 50,
+      hangerStandard: 'UDH',
+      seatpostDiameterMm: 27.2,
+    },
+    bikes: [
+      { model: 'Checkpoint ALR 3', year: 2025 },
+      { model: 'Checkpoint ALR 5', year: 2025 },
+      { model: 'Checkpoint ALR 4', year: 2025 },
+      { model: 'Checkpoint ALR 5', year: 2024 },
+      { model: 'Checkpoint ALR 5 AXS', year: 2024 },
+      { model: 'Checkpoint ALR 4', year: 2024 },
     ],
   },
 ];
