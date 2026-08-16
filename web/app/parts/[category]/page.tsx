@@ -11,6 +11,7 @@ import Link from 'next/link';
 import FilterSidebar from '../../../components/FilterSidebar';
 import PartIcon from '../../../components/PartIcon';
 import PartImage from '../../../components/PartImage';
+import { useDiscipline } from '../../../components/DisciplineProvider';
 import { api } from '../../../lib/api-client';
 import { formatGbpWhole } from '../../../lib/money';
 import { CATEGORY_BY_SLUG, GROUPS, accentFor, formatSpecValue } from '../../../lib/categories';
@@ -18,6 +19,7 @@ import { CATEGORY_BY_SLUG, GROUPS, accentFor, formatSpecValue } from '../../../l
 function CategoryPageInner() {
   const { category } = useParams<{ category: string }>();
   const searchParams = useSearchParams();
+  const { discipline } = useDiscipline();
   const [parts, setParts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -28,21 +30,25 @@ function CategoryPageInner() {
     if (!config) { setLoading(false); return; }
     setLoading(true);
     const params = Object.fromEntries(searchParams.entries());
+    // `discipline` itself isn't read from `params` — getParts() already
+    // pulls the header switch's value straight from localStorage. It's
+    // only a dependency here so switching it while this page is open
+    // triggers a refetch instead of leaving a stale list on screen.
     api.getParts(category, params)
       .then(setParts)
       .catch(() => setParts([]))
       .finally(() => setLoading(false));
-  }, [category, searchParams, config]);
+  }, [category, searchParams, config, discipline]);
 
   if (!config) {
-    return <div className="max-w-6xl mx-auto px-6 py-10 text-sm text-ink-muted">Unknown category: {category}</div>;
+    return <div className="max-w-[1400px] mx-auto px-6 py-10 text-sm text-ink-muted">Unknown category: {category}</div>;
   }
 
   // First two spec fields make a useful at-a-glance summary on the card.
   const preview = config.specs.slice(0, 2);
 
   return (
-    <div className="max-w-6xl mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
+    <div className="max-w-[1400px] mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
       <div className="flex items-center gap-3 mb-6">
         <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: soft, color: accent }}>
           <PartIcon slug={category} className="w-7 h-7" />
@@ -56,7 +62,7 @@ function CategoryPageInner() {
         </div>
       </div>
 
-      <div className="flex gap-8">
+      <div className="flex flex-col md:flex-row gap-5 md:gap-8">
         {config.filters.length > 0 && <FilterSidebar filters={config.filters} accent={accent} />}
 
         <div className="flex-1">
@@ -119,7 +125,7 @@ function CategoryPageInner() {
 
 export default function CategoryPage() {
   return (
-    <Suspense fallback={<div className="max-w-6xl mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>}>
+    <Suspense fallback={<div className="max-w-[1400px] mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>}>
       <CategoryPageInner />
     </Suspense>
   );

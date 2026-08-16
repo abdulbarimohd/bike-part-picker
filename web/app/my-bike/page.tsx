@@ -10,7 +10,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Loader2, ArrowRight, Bike } from 'lucide-react';
-import { api, isLoggedIn, clearToken, BikeModel } from '../../lib/api-client';
+import { api, clearToken, BikeModel } from '../../lib/api-client';
 import { formatGbpWhole } from '../../lib/money';
 
 export default function MyBikePage() {
@@ -34,10 +34,9 @@ export default function MyBikePage() {
   }, [query]);
 
   async function choose(bike: BikeModel) {
-    if (!isLoggedIn()) {
-      router.push('/login');
-      return;
-    }
+    // Login is optional, not a gate: /bikes/:slug/clone works logged
+    // out too and hands back an anonymous build, same as the scratch
+    // builder. A "log in to save this" prompt lives on the build page.
     setCloning(bike.slug);
     setError(null);
     try {
@@ -57,11 +56,11 @@ export default function MyBikePage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10">
+    <div className="max-w-[1400px] mx-auto px-6 py-10">
       <span className="chip bg-contact-soft text-contact ring-1 ring-contact-ring mb-4">
         For riders who already own a bike
       </span>
-      <h1 className="font-display text-4xl font-bold tracking-tight text-ink mb-3">
+      <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight text-ink mb-3 max-w-3xl">
         Find upgrades that fit <span className="text-contact">your</span> bike
       </h1>
       <p className="text-ink-muted mb-8 max-w-2xl leading-relaxed">
@@ -70,7 +69,10 @@ export default function MyBikePage() {
         right freehub, the right shock size, the right seatpost diameter.
       </p>
 
-      <div className="relative mb-6">
+      {/* Search stays a focused width even though the page no longer
+          does -- a search box stretched to 1400px reads as broken, not
+          spacious. Results below use the full page width instead. */}
+      <div className="relative mb-6 max-w-2xl">
         <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-muted" />
         <input
           type="text"
@@ -83,30 +85,30 @@ export default function MyBikePage() {
       </div>
 
       {error && (
-        <p className="text-sm text-brake bg-brake-soft border border-brake-ring rounded-lg px-4 py-3 mb-4">{error}</p>
+        <p className="text-sm text-brake bg-brake-soft border border-brake-ring rounded-lg px-4 py-3 mb-4 max-w-2xl">{error}</p>
       )}
 
       {loading ? (
-        <div className="space-y-3">
-          {[...Array(3)].map((_, i) => (
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {[...Array(6)].map((_, i) => (
             <div key={i} className="h-20 rounded-xl bg-white/60 border border-black/5 animate-pulse" />
           ))}
         </div>
       ) : bikes.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-black/15 bg-white/60 p-10 text-center">
+        <div className="rounded-xl border border-dashed border-black/15 bg-white/60 p-10 text-center max-w-2xl">
           <Bike size={26} className="mx-auto text-ink-muted/40 mb-3" />
           <p className="text-sm text-ink-muted">
             {query ? `No bikes matching “${query}”.` : 'No bikes in the catalogue yet.'}
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {bikes.map((bike) => (
             <button
               key={bike.slug}
               onClick={() => choose(bike)}
               disabled={cloning !== null}
-              className="w-full text-left accent-tile shadow-card flex items-center gap-4 disabled:opacity-60"
+              className="text-left accent-tile shadow-card flex items-center gap-4 disabled:opacity-60"
               // Matches the `contact` colour in tailwind.config.ts.
               style={{ ['--accent' as string]: '#78350f' }}
             >
@@ -133,7 +135,7 @@ export default function MyBikePage() {
         </div>
       )}
 
-      <p className="text-xs text-ink-muted mt-8">
+      <p className="text-xs text-ink-muted mt-8 max-w-2xl">
         Can&apos;t find your bike? The catalogue is still growing. Most gravel bikes here
         (Canyon Grizl, Cannondale Topstone/Synapse, Trek Checkpoint) have a verified factory
         frame but not yet a full stock build — pick one to start from the right frame, then

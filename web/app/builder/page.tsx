@@ -4,7 +4,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import BuilderMatrix from '../../components/BuilderMatrix';
-import { api, isLoggedIn } from '../../lib/api-client';
+import { api } from '../../lib/api-client';
 
 function BuilderPageInner() {
   const searchParams = useSearchParams();
@@ -15,26 +15,16 @@ function BuilderPageInner() {
 
   useEffect(() => {
     if (buildId) return;
-    // Anonymous build creation isn't supported (every Build needs
-    // a userId) — bounce to login before even trying, rather than
-    // letting the createBuild call 401.
-    if (!isLoggedIn()) {
-      router.replace('/login');
-      return;
-    }
-    // No build in the URL — start a new one and reflect its id in
-    // the URL so refreshing the page doesn't lose progress.
+    // Login is optional, not a gate: POST /builds works logged out and
+    // hands back an anonymous build (see builds.routes.ts). BuilderMatrix
+    // shows a non-blocking "log in to save this" prompt for it instead.
     api.createBuild()
       .then((build) => {
         setBuildId(build.id);
         router.replace(`/builder?build=${build.id}`);
       })
       .catch((err: any) => {
-        if (err.status === 401) {
-          router.replace('/login');
-        } else {
-          setError(err.message ?? 'Could not start a new build');
-        }
+        setError(err.message ?? 'Could not start a new build');
       });
   }, [buildId, router]);
 

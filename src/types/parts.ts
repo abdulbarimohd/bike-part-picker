@@ -111,7 +111,7 @@ export interface Frame extends PartIdentity {
   rearAxleThreadPitch?: AxleThreadPitch | null;
   rearAxleLengthMm?: number | null;
   dropoutType?: DropoutType | null;
-  headsetTaper: HeadsetTaper;
+  headsetTaper?: HeadsetTaper | null;
   headTubeUpperStandard?: HeadsetCupStandard | null;
   headTubeLowerStandard?: HeadsetCupStandard | null;
   headTubeLengthMm?: number | null;

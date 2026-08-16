@@ -32,7 +32,7 @@ export default function SavedBuildsPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-6 py-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="font-display text-3xl font-bold text-ink">Your Builds</h1>
         <Link
@@ -46,9 +46,9 @@ export default function SavedBuildsPage() {
       {loading ? (
         <p className="text-sm text-ink-muted">Loading…</p>
       ) : error ? (
-        <p className="text-sm text-brake bg-brake-soft border border-brake-ring rounded-lg px-4 py-3">{error}</p>
+        <p className="text-sm text-brake bg-brake-soft border border-brake-ring rounded-lg px-4 py-3 max-w-2xl">{error}</p>
       ) : builds.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-12 text-center">
+        <div className="rounded-2xl border border-dashed border-black/15 bg-white/60 p-12 text-center max-w-2xl">
           <Bike size={28} className="mx-auto text-ink-muted/40 mb-3" />
           <p className="text-sm text-ink-muted mb-4">No saved builds yet.</p>
           <Link href="/builder" className="text-sm font-medium text-chassis hover:underline">
@@ -56,9 +56,9 @@ export default function SavedBuildsPage() {
           </Link>
         </div>
       ) : (
-        <div className="rounded-xl bg-white border border-black/5 shadow-card divide-y divide-black/5 overflow-hidden">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {builds.map((build) => (
-            <div key={build.id} className="flex items-center justify-between px-4 py-3.5 hover:bg-black/[0.02] transition-colors">
+            <div key={build.id} className="rounded-xl bg-white border border-black/5 shadow-card p-4 flex items-center justify-between hover:border-black/15 transition-colors">
               <Link href={`/builder?build=${build.id}`} className="min-w-0 flex-1">
                 <div className="text-sm font-medium text-ink truncate">{build.name}</div>
                 <div className="text-xs text-ink-muted mt-0.5">
@@ -68,7 +68,7 @@ export default function SavedBuildsPage() {
               </Link>
               <button
                 onClick={() => handleDelete(build.id)}
-                className="text-ink-muted/50 hover:text-brake p-2 transition-colors"
+                className="text-ink-muted/50 hover:text-brake p-2 transition-colors shrink-0"
                 aria-label={`Delete ${build.name}`}
               >
                 <Trash2 size={16} />

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Build" ALTER COLUMN "userId" DROP NOT NULL;

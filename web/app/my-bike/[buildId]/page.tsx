@@ -14,7 +14,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import {
-  AlertTriangle, ArrowLeft, CheckCircle2, ChevronRight, Info, Loader2, RotateCcw, Wrench,
+  AlertTriangle, ArrowLeft, CheckCircle2, ChevronRight, Info, Loader2, LogIn, RotateCcw, Wrench,
 } from 'lucide-react';
 import { api, CompatibilityWarning } from '../../../lib/api-client';
 import { BUILDER_SLOTS, GROUPS, GroupKey, GROUP_OF } from '../../../lib/categories';
@@ -50,10 +50,14 @@ function bySlot(buildParts: any[]): Record<string, any> {
   return out;
 }
 
+// text-{colour}-text (not text-{colour}) and full opacity (not /80) --
+// the plain accent colour reads 2.68-4.28:1 against its own soft
+// background, short of WCAG AA's 4.5:1 floor for normal text; -text is
+// a darkened same-hue variant that clears it. See tailwind.config.ts.
 const SEVERITY = {
-  critical: { box: 'border-brake-ring bg-brake-soft', head: 'text-brake', body: 'text-brake/80', Icon: AlertTriangle },
-  warning: { box: 'border-drive-ring bg-drive-soft', head: 'text-drive', body: 'text-drive/80', Icon: AlertTriangle },
-  info: { box: 'border-cockpit-ring bg-cockpit-soft', head: 'text-cockpit', body: 'text-cockpit/80', Icon: Info },
+  critical: { box: 'border-brake-ring bg-brake-soft', head: 'text-brake-text', body: 'text-brake-text', Icon: AlertTriangle },
+  warning: { box: 'border-drive-ring bg-drive-soft', head: 'text-drive-text', body: 'text-drive-text', Icon: AlertTriangle },
+  info: { box: 'border-cockpit-ring bg-cockpit-soft', head: 'text-cockpit-text', body: 'text-cockpit-text', Icon: Info },
 } as const;
 
 const GROUPED = (Object.keys(GROUPS) as GroupKey[])
@@ -107,7 +111,7 @@ export default function UpgradePage() {
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-6 py-16 text-center">
+      <div className="max-w-[1400px] mx-auto px-6 py-16 text-center">
         <Loader2 className="animate-spin text-ink-muted mx-auto" />
       </div>
     );
@@ -133,7 +137,7 @@ export default function UpgradePage() {
   const warnSlots = new Set(warnings.filter((w) => w.severity === 'warning').flatMap((w) => w.components));
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
       <Link href="/my-bike" className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink mb-5">
         <ArrowLeft size={14} /> Choose a different bike
       </Link>
@@ -143,11 +147,24 @@ export default function UpgradePage() {
         Everything below is filtered to fit this bike. Swap a part and the rest re-filter around it.
       </p>
 
+      {/* Optional, not a gate: cloning a bike already works signed out.
+          Logging in just means this survives past this browser. */}
+      {build?.isAnonymous && (
+        <Link
+          href={`/login?build=${buildId}&from=my-bike`}
+          className="flex items-center gap-2.5 rounded-xl border border-chassis-ring bg-chassis-soft px-4 py-3 mb-6 text-sm text-chassis hover:bg-chassis-soft/70 transition-colors"
+        >
+          <LogIn size={16} className="shrink-0" />
+          This build isn&apos;t saved to an account yet — log in to keep it, or ignore this and keep going.
+          <ChevronRight size={15} className="ml-auto shrink-0" />
+        </Link>
+      )}
+
       {/* Summary */}
       <div className="grid sm:grid-cols-3 gap-3 mb-6">
         <div
           className={`sm:col-span-2 flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-sm font-medium shadow-card ${
-            compatible ? 'border-wheel-ring bg-wheel-soft text-wheel' : 'border-brake-ring bg-brake-soft text-brake'
+            compatible ? 'border-wheel-ring bg-wheel-soft text-wheel-text' : 'border-brake-ring bg-brake-soft text-brake-text'
           }`}
         >
           {compatible ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}

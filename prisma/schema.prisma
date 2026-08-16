@@ -408,8 +408,14 @@ model User {
 model Build {
   id        String   @id @default(uuid())
   name      String   @default("Untitled Build")
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Null means an anonymous/guest build -- login is optional, not a
+  /// gate, so a build can exist before anyone claims it. Anyone who
+  /// holds the build's id can view and edit it while it's unclaimed
+  /// (the uuid itself is the access token, the same trust model as a
+  /// guest shopping cart); POST /builds/:id/claim attaches it to a
+  /// real account once the rider chooses to log in.
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   isPublic  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -440,17 +446,17 @@ model Build {
 // ------------------------------------------------------------
 
 model BikeModel {
-  id        String   @id @default(uuid())
-  brand     String
-  model     String
-  year      Int
+  id         String   @id @default(uuid())
+  brand      String
+  model      String
+  year       Int
   /// Trim level, e.g. "9.8 XT" — brands sell one model at many specs.
-  variant   String?
-  slug      String   @unique
-  msrpPence Int?
+  variant    String?
+  slug       String   @unique
+  msrpPence  Int?
   /// Discipline: trail, xc, enduro, gravel…
   discipline String?
-  createdAt DateTime @default(now())
+  createdAt  DateTime @default(now())
 
   parts  BikeModelPart[]
   builds Build[]
@@ -494,8 +500,20 @@ model BuildPart {
 // PART — shared base table
 // ------------------------------------------------------------
 
+/// The three-way discipline filter surfaced in the header. Deliberately
+/// small and closed like every other enum in this schema -- "gravel" is
+/// the only genuinely cross-discipline case in the current catalogue
+/// (cyclocross/gravel-race frames), and it maps to GRAVEL rather than
+/// getting a fourth bucket, matching how the builder UI is scoped to
+/// exactly three switch positions.
+enum Discipline {
+  ROAD
+  GRAVEL
+  MTB
+}
+
 model Part {
-  id             String    @id @default(uuid())
+  id             String       @id @default(uuid())
   type           PartType
   brand          String
   name           String
@@ -505,9 +523,18 @@ model Part {
   /// (Shimano, SRAM) carry no RRP at all, and inventing one would dress a
   /// gap up as a fact. The UI shows "price unknown" and totals skip it.
   basePricePence Int?
-  weightGrams    Int       @default(0)
+  weightGrams    Int          @default(0)
   releaseDate    DateTime?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime     @default(now())
+  /// Which of the header's three discipline filters this part shows
+  /// under. Empty means "not yet classified", not "fits nothing" --
+  /// the filter treats an empty array as always-shown, the same
+  /// abstain-rather-than-hide-inventory choice the compatibility
+  /// engine already makes for null spec fields. Most parts will be
+  /// empty until a real classification pass tags them; frames are the
+  /// one category populated so far, from research already done to
+  /// source them, not a guess made just for this field.
+  disciplines    Discipline[] @default([])
 
   // ---- Provenance ----
   /// Defaults to UNVERIFIED so anything inserted without an explicit
@@ -521,8 +548,6 @@ model Part {
   /// Set when a human has checked this against the source.
   verifiedAt DateTime?
   verifiedBy String?
-
-  @@index([dataSource])
 
   frame            Frame?
   fork             Fork?
@@ -557,6 +582,14 @@ model Part {
   bikeModelParts BikeModelPart[]
   stockAlerts    StockAlert[]
 
+  // Frame-kit bundling (item 6) -- see PartBundle below. Two relations
+  // to the same model, so both ends need their own @relation name:
+  // this part as the SKU that ships other parts inside its box, and
+  // this part as a component that ships inside some other SKU's box.
+  bundlesAsParent    PartBundle[] @relation("BundleParent")
+  bundledAsComponent PartBundle[] @relation("BundleIncluded")
+
+  @@index([dataSource])
   @@index([type])
   @@index([brand])
 }
@@ -569,53 +602,58 @@ model Frame {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  material           FrameMaterial
-  bbShellStandard    BbShellStandard
-  bbShellWidthMm     Int? // R-BB-03: separate from the standard
-  rearAxleType       AxleType
-  rearAxleThreadPitch AxleThreadPitch? // R-AXL-03
-  rearAxleLengthMm   Int?
-  dropoutType        DropoutType? // R-AXL-04
-  headsetTaper       HeadsetTaper
-  headTubeUpperStandard HeadsetCupStandard? // R-HS-02
-  headTubeLowerStandard HeadsetCupStandard?
-  headTubeLengthMm   Int? // R-FRK-01
-  rearBrakeMountType BrakeMountType
-  maxRotorMmRear     Int? // R-BRK-04
-  wheelDiameter      WheelDiameter
-  mulletApproved     Boolean @default(false) // R-FRK-04
-  maxTyreWidthMm     Int // at the given wheelDiameter
-  maxTyreWidthMm650b Int?
-  maxChainringTeeth  Int? // R-CRK-02
-  maxForkTravelMm    Int? // R-FRK-02
-  designAxleToCrownMm Int? // R-FRK-03
-  chainstayLengthMm  Int? // R-DRV-09
-  hangerStandard     HangerStandard? // R-HGR-01
-  seatpostDiameterMm Float? // R-SP-01
-  seatClampDiameterMm Float? // R-SP-05
+  material               FrameMaterial
+  bbShellStandard        BbShellStandard
+  bbShellWidthMm         Int? // R-BB-03: separate from the standard
+  rearAxleType           AxleType
+  rearAxleThreadPitch    AxleThreadPitch? // R-AXL-03
+  rearAxleLengthMm       Int?
+  dropoutType            DropoutType? // R-AXL-04
+  /// Nullable: manufacturers routinely publish headset bearing part
+  /// numbers (e.g. IS44/IS44) without ever stating the taper class
+  /// those bearings imply, which isn't a reliable enough mapping to
+  /// derive from — see R-HS-01, which abstains when either side is
+  /// unknown rather than treating null as "doesn't match."
+  headsetTaper           HeadsetTaper?
+  headTubeUpperStandard  HeadsetCupStandard? // R-HS-02
+  headTubeLowerStandard  HeadsetCupStandard?
+  headTubeLengthMm       Int? // R-FRK-01
+  rearBrakeMountType     BrakeMountType
+  maxRotorMmRear         Int? // R-BRK-04
+  wheelDiameter          WheelDiameter
+  mulletApproved         Boolean             @default(false) // R-FRK-04
+  maxTyreWidthMm         Int // at the given wheelDiameter
+  maxTyreWidthMm650b     Int?
+  maxChainringTeeth      Int? // R-CRK-02
+  maxForkTravelMm        Int? // R-FRK-02
+  designAxleToCrownMm    Int? // R-FRK-03
+  chainstayLengthMm      Int? // R-DRV-09
+  hangerStandard         HangerStandard? // R-HGR-01
+  seatpostDiameterMm     Float? // R-SP-01
+  seatClampDiameterMm    Float? // R-SP-05
   maxSeatpostInsertionMm Int? // R-SP-03
-  seatpostRouting    RoutingType? // R-SP-02
-  cableRouting       RoutingType? // R-MNT-02
-  iscgStandard       IscgStandard? // R-MNT-01
-  bottleMounts       Int? // R-MNT-04
-  hasEyelets         Boolean @default(false) // R-MNT-05
-  fdMountType        FdMountType? // R-FD-01
-  fdPullDirection    PullDirection? // R-FD-02
+  seatpostRouting        RoutingType? // R-SP-02
+  cableRouting           RoutingType? // R-MNT-02
+  iscgStandard           IscgStandard? // R-MNT-01
+  bottleMounts           Int? // R-MNT-04
+  hasEyelets             Boolean             @default(false) // R-MNT-05
+  fdMountType            FdMountType? // R-FD-01
+  fdPullDirection        PullDirection? // R-FD-02
   // Rear suspension — all must match a shock exactly (R-SHK-*)
-  shockEyeToEyeMm       Int?
-  shockStrokeMm         Int?
-  shockMountType        ShockMountType?
-  shockHardwareWidthMm  Int?
+  shockEyeToEyeMm        Int?
+  shockStrokeMm          Int?
+  shockMountType         ShockMountType?
+  shockHardwareWidthMm   Int?
   shockBushingDiameterMm Float?
-  leverageRatio         Float?
-  suitableForCoil       Boolean?
+  leverageRatio          Float?
+  suitableForCoil        Boolean?
   // Fit (R-FIT-*)
-  frameSize          String?
-  standoverMm        Int?
-  reachMm            Int?
-  stackMm            Int?
-  riderMinHeightCm   Int?
-  riderMaxHeightCm   Int?
+  frameSize              String?
+  standoverMm            Int?
+  reachMm                Int?
+  stackMm                Int?
+  riderMinHeightCm       Int?
+  riderMaxHeightCm       Int?
 
   @@index([bbShellStandard])
   @@index([rearAxleType])
@@ -625,22 +663,22 @@ model Fork {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  steererTubeTaper    HeadsetTaper
-  steererLengthMm     Int? // R-FRK-01
-  crownRaceDiameterMm Float? // R-HS-03
-  frontAxleType       AxleType
+  steererTubeTaper     HeadsetTaper
+  steererLengthMm      Int? // R-FRK-01
+  crownRaceDiameterMm  Float? // R-HS-03
+  frontAxleType        AxleType
   frontAxleThreadPitch AxleThreadPitch?
-  frontAxleLengthMm   Int?
-  dropoutType         DropoutType?
-  brakeMountType      BrakeMountType
-  maxRotorMm          Int? // R-BRK-04
-  wheelDiameter       WheelDiameter
-  maxTyreWidthMm      Int
-  maxTyreWidthMm650b  Int?
-  travelMm            Int? // R-FRK-02
-  axleToCrownMm       Int? // R-FRK-03
-  offsetMm            Int? // R-FRK-06
-  isSuspension        Boolean @default(true) // R-FRK-05
+  frontAxleLengthMm    Int?
+  dropoutType          DropoutType?
+  brakeMountType       BrakeMountType
+  maxRotorMm           Int? // R-BRK-04
+  wheelDiameter        WheelDiameter
+  maxTyreWidthMm       Int
+  maxTyreWidthMm650b   Int?
+  travelMm             Int? // R-FRK-02
+  axleToCrownMm        Int? // R-FRK-03
+  offsetMm             Int? // R-FRK-06
+  isSuspension         Boolean          @default(true) // R-FRK-05
 
   @@index([frontAxleType])
 }
@@ -660,15 +698,15 @@ model Crankset {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  spindleDiameter  SpindleInterface
-  chainlineType    String
-  chainlineMm      Float? // R-CRK-01
-  spindleLengthMm  Int? // R-BB-05
-  qFactorMm        Int? // R-CRK-03
-  crankLengthMm    Int? // R-CRK-04
-  pedalThread      PedalThread? // R-PDL-01
-  chainringMount   ChainringMountStandard? // R-CHR-01/02
-  chainringCount   Int? // R-CHR-04
+  spindleDiameter   SpindleInterface
+  chainlineType     String
+  chainlineMm       Float? // R-CRK-01
+  spindleLengthMm   Int? // R-BB-05
+  qFactorMm         Int? // R-CRK-03
+  crankLengthMm     Int? // R-CRK-04
+  pedalThread       PedalThread? // R-PDL-01
+  chainringMount    ChainringMountStandard? // R-CHR-01/02
+  chainringCount    Int? // R-CHR-04
   maxChainringTeeth Int?
 }
 
@@ -679,7 +717,7 @@ model Chainring {
   mountStandard ChainringMountStandard // R-CHR-01/02
   boltCount     Int? // R-CHR-01
   teeth         Int
-  narrowWide    Boolean @default(false) // R-CHR-04
+  narrowWide    Boolean                @default(false) // R-CHR-04
   offsetMm      Float? // R-CHR-03
   speeds        Int?
 }
@@ -696,14 +734,14 @@ model Wheelset {
   // rotor interface is six-bolt or Centerlock, unrelated to how the
   // caliper bolts to the frame.
   rotorMountStandard RotorMountStandard
-  tubelessReady      Boolean @default(false)
-  hookless           Boolean @default(false) // R-TIR-04
+  tubelessReady      Boolean            @default(false)
+  hookless           Boolean            @default(false) // R-TIR-04
   maxPressurePsi     Int? // R-TIR-04
   internalRimWidthMm Int
   rimDepthMm         Int? // R-TIR-07
   valveHoleType      ValveType? // R-TIR-06
-  hasBrakeTrack      Boolean @default(false) // R-BRK-12
-  convertibleEndCaps Boolean @default(false) // R-AXL-05
+  hasBrakeTrack      Boolean            @default(false) // R-BRK-12
+  convertibleEndCaps Boolean            @default(false) // R-AXL-05
 }
 
 // A tyre's "width" is nominal (e.g. 45mm) but actual mounted
@@ -715,8 +753,8 @@ model Tyre {
 
   wheelDiameter  WheelDiameter
   widthMm        Int
-  tubeless       Boolean @default(false)
-  hooklessSafe   Boolean @default(false) // R-TIR-04
+  tubeless       Boolean       @default(false)
+  hooklessSafe   Boolean       @default(false) // R-TIR-04
   maxPressurePsi Int?
 }
 
@@ -724,23 +762,23 @@ model Tube {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  wheelDiameter  WheelDiameter
-  minWidthMm     Int // R-TIR-08
-  maxWidthMm     Int
-  valveType      ValveType // R-TIR-06
-  valveLengthMm  Int // R-TIR-07
+  wheelDiameter WheelDiameter
+  minWidthMm    Int // R-TIR-08
+  maxWidthMm    Int
+  valveType     ValveType // R-TIR-06
+  valveLengthMm Int // R-TIR-07
 }
 
 model BrakeCaliper {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  mountType         BrakeMountType
-  nativeRotorMm     Int? // R-BRK-03: what it mounts without an adapter
-  isHydraulic       Boolean @default(true)
-  fluidType         BrakeFluidType? // R-BRK-07
-  brakeSystemFamily String? // R-BRK-08: lever/caliper must be matched
-  padShape          String? // R-BRK-10
+  mountType           BrakeMountType
+  nativeRotorMm       Int? // R-BRK-03: what it mounts without an adapter
+  isHydraulic         Boolean         @default(true)
+  fluidType           BrakeFluidType? // R-BRK-07
+  brakeSystemFamily   String? // R-BRK-08: lever/caliper must be matched
+  padShape            String? // R-BRK-10
   minRotorThicknessMm Float? // R-BRK-11
   maxRotorThicknessMm Float?
 }
@@ -749,12 +787,12 @@ model BrakeLever {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  isHydraulic          Boolean @default(true) // R-BRK-09
-  fluidType            BrakeFluidType? // R-BRK-07
-  brakeSystemFamily    String? // R-BRK-08
-  barType              BarType? // R-CKP-04
-  clampDiameterMm      Float? // R-CKP-03
-  requiresCompressionless Boolean @default(false) // R-MNT-06
+  isHydraulic             Boolean         @default(true) // R-BRK-09
+  fluidType               BrakeFluidType? // R-BRK-07
+  brakeSystemFamily       String? // R-BRK-08
+  barType                 BarType? // R-CKP-04
+  clampDiameterMm         Float? // R-CKP-03
+  requiresCompressionless Boolean         @default(false) // R-MNT-06
 }
 
 model Rotor {
@@ -805,11 +843,11 @@ model Cassette {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  speeds            Int // R-DRV-10
-  freehubBodyType   FreehubBodyType // R-FH-01
-  smallestCogTeeth  Int
-  largestCogTeeth   Int // R-DRV-04
-  requiresSpacerMm  Float? // R-FH-02/03
+  speeds           Int // R-DRV-10
+  freehubBodyType  FreehubBodyType // R-FH-01
+  smallestCogTeeth Int
+  largestCogTeeth  Int // R-DRV-04
+  requiresSpacerMm Float? // R-FH-02/03
 }
 
 model Chain {
@@ -841,9 +879,9 @@ model RearShock {
   hardwareWidthMm   Int? // R-SHK-03
   bushingDiameterMm Float?
   sizing            ShockSizing // R-SHK-04
-  isCoil            Boolean @default(false) // R-SHK-07
+  isCoil            Boolean        @default(false) // R-SHK-07
   springRate        Int? // R-SHK-06
-  hasReservoir      Boolean @default(false) // R-SHK-05
+  hasReservoir      Boolean        @default(false) // R-SHK-05
 }
 
 model Handlebar {
@@ -875,7 +913,7 @@ model Seatpost {
 
   diameterMm    Float // R-SP-01
   totalLengthMm Int // R-SP-03
-  isDropper     Boolean @default(false)
+  isDropper     Boolean            @default(false)
   travelMm      Int? // R-SP-04
   routingType   RoutingType? // R-SP-02
   remoteType    DropperRemoteType? // R-SP-07
@@ -894,8 +932,8 @@ model Saddle {
   partId String @id
   part   Part   @relation(fields: [partId], references: [id], onDelete: Cascade)
 
-  railType    SaddleRailType // R-SP-06
-  widthMm     Int?
+  railType SaddleRailType // R-SP-06
+  widthMm  Int?
 }
 
 model Pedal {
@@ -928,6 +966,65 @@ model DerailleurHanger {
 
   hangerStandard HangerStandard // R-HGR-02
   model          String?
+}
+
+// ------------------------------------------------------------
+// PART BUNDLES (item 6 -- frame-kit bundling)
+//
+// Some frame SKUs ("framesets") are sold as a kit that physically
+// includes a specific fork/headset/shock already fitted in the box.
+// This is distinct from BikeModel/BikeModelPart above, which models
+// "a complete, ridable bike -> every part that ships on it" (a whole
+// bike, priced and browsed as one thing). PartBundle instead models
+// a Part-to-Part fact: "this exact frameset SKU, picked/bought on
+// its own in the builder, physically includes this exact other Part
+// in the box." Directional (parent -> bundled), not symmetric -- a
+// Fork does not "bundle" the Frame it ships with.
+//
+// A bundle claim is itself a checkable, sourced fact (it can be
+// wrong per trim/year, exactly like any spec field on Part) and gets
+// its own provenance trio rather than inheriting the parent Part's,
+// because "this frame exists" and "this frame ships with that fork"
+// are independently verifiable claims that can come from different
+// sources or be checked at different times.
+//
+// Empty by design as of this migration: no real, sourced frameset
+// -kit data (which fork/headset a specific SKU actually ships with)
+// has been found yet. The only "*Frameset" Part rows in the current
+// catalogue are prisma/seed.ts demo rows marked dataSource UNVERIFIED
+// with dataNotes admitting invented geometry -- per the governing
+// no-fabrication rule, nothing has been populated against them.
+// Populating this table is future sourcing work (see the item 7
+// pattern in scripts/import/import-sourced-frames.ts), not guessing.
+// ------------------------------------------------------------
+
+model PartBundle {
+  id String @id @default(uuid())
+
+  /// The SKU actually sold/picked in the builder -- typically a Frame.
+  parentPartId String
+  parentPart   Part   @relation("BundleParent", fields: [parentPartId], references: [id], onDelete: Cascade)
+
+  /// The component that ships inside that SKU's box, e.g. a Fork or Headset.
+  bundledPartId String
+  bundledPart   Part   @relation("BundleIncluded", fields: [bundledPartId], references: [id], onDelete: Cascade)
+
+  quantity Int     @default(1)
+  /// e.g. "fork", "headset", "rearShock" -- mirrors the slot naming
+  /// already used by BuildPart.slot / BikeModelPart.slot.
+  role     String?
+
+  // ---- Provenance (see Part's own provenance fields above for the
+  // same reasoning) ----
+  /// Defaults to UNVERIFIED, same as Part -- a bundle claim inserted
+  /// without an explicit source is untrusted, not silently believed.
+  dataSource DataSource @default(UNVERIFIED)
+  sourceUrl  String?
+  dataNotes  String?
+
+  @@unique([parentPartId, bundledPartId])
+  @@index([parentPartId])
+  @@index([bundledPartId])
 }
 
 // ------------------------------------------------------------

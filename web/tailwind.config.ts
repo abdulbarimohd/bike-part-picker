@@ -36,10 +36,16 @@ const config: Config = {
         // this was tried and reverted -- scoped to the header nav bar only,
         // see layout.tsx, not the category badge system.)
         chassis: { DEFAULT: '#b45309', soft: '#f1f5f9', ring: '#e2e8f0' }, // gold text, silver ribbon
-        drive: { DEFAULT: '#ea580c', soft: '#fff7ed', ring: '#fed7aa' },
-        wheel: { DEFAULT: '#059669', soft: '#ecfdf5', ring: '#a7f3d0' },
-        brake: { DEFAULT: '#e11d48', soft: '#fff1f2', ring: '#fecdd3' },
-        cockpit: { DEFAULT: '#0284c7', soft: '#f0f9ff', ring: '#bae6fd' },
+        // `text` variants below are darkened versions of DEFAULT, used only
+        // where the colour carries real reading text (the compatibility
+        // warning boxes) rather than a badge/icon accent -- DEFAULT reads
+        // 2.68-4.28:1 against its own `soft` background, short of the
+        // 4.5:1 WCAG AA floor for normal text; `text` clears 4.6:1+
+        // against both `soft` and white, same hue, just darker.
+        drive: { DEFAULT: '#ea580c', soft: '#fff7ed', ring: '#fed7aa', text: '#c3490a' },
+        wheel: { DEFAULT: '#059669', soft: '#ecfdf5', ring: '#a7f3d0', text: '#04815b' },
+        brake: { DEFAULT: '#e11d48', soft: '#fff1f2', ring: '#fecdd3', text: '#d71c45' },
+        cockpit: { DEFAULT: '#0284c7', soft: '#f0f9ff', ring: '#bae6fd', text: '#0276b3' },
         contact: { DEFAULT: '#78350f', soft: '#f1f5f9', ring: '#e2e8f0' }, // brown text, silver ribbon
         misc: { DEFAULT: '#475569', soft: '#f8fafc', ring: '#cbd5e1' },
       },

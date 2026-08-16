@@ -15,6 +15,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Check, Loader2, Ban, ChevronDown, Trash2, Wrench } from 'lucide-react';
 import PartIcon from '../../../../components/PartIcon';
+import { useDiscipline } from '../../../../components/DisciplineProvider';
 import { api, UpgradePath, UpgradePathChange } from '../../../../lib/api-client';
 import { BUILDER_SLOTS, CATEGORY_BY_SLUG, accentFor, formatSpecValue } from '../../../../lib/categories';
 import { formatGbp } from '../../../../lib/money';
@@ -29,6 +30,7 @@ function PickerInner() {
   const slotConfig = BUILDER_SLOTS.find((s) => s.slot === slot);
   const category = slotConfig ? CATEGORY_BY_SLUG[slotConfig.slug] : undefined;
   const { accent, soft } = accentFor(slotConfig?.slug ?? '');
+  const { discipline } = useDiscipline();
 
   const [parts, setParts] = useState<any[]>([]);
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -51,7 +53,7 @@ function PickerInner() {
       })
       .catch(() => setParts([]))
       .finally(() => setLoading(false));
-  }, [buildId, slot, slotConfig]);
+  }, [buildId, slot, slotConfig, discipline]);
 
   async function choose(partId: string) {
     setSaving(partId);
@@ -67,7 +69,7 @@ function PickerInner() {
   }
 
   if (!slotConfig || !category) {
-    return <div className="max-w-4xl mx-auto px-6 py-10 text-sm text-ink-muted">Unknown slot: {slot}</div>;
+    return <div className="max-w-[1400px] mx-auto px-6 py-10 text-sm text-ink-muted">Unknown slot: {slot}</div>;
   }
 
   const fits = parts.filter((p) => p.compatible !== false);
@@ -75,7 +77,7 @@ function PickerInner() {
   const preview = category.specs.slice(0, 3);
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
+    <div className="max-w-[1400px] mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
       <Link href={from} className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink mb-5">
         <ArrowLeft size={14} /> Back to your build
       </Link>
@@ -98,7 +100,7 @@ function PickerInner() {
       </div>
 
       {loading ? (
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(4)].map((_, i) => <div key={i} className="h-36 rounded-xl bg-white/60 border border-black/5 animate-pulse" />)}
         </div>
       ) : (
@@ -109,7 +111,7 @@ function PickerInner() {
               <p className="text-sm text-ink-muted">Nothing in the catalogue fits here yet.</p>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 gap-4 mb-8">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
               {fits.map((p) => {
                 const selected = p.partId === currentId;
                 return (
@@ -292,7 +294,7 @@ function BlockedRow({ part, slug, buildId, position, isMyBike, onApplied }: {
 
 export default function PickerPage() {
   return (
-    <Suspense fallback={<div className="max-w-4xl mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>}>
+    <Suspense fallback={<div className="max-w-[1400px] mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>}>
       <PickerInner />
     </Suspense>
   );

@@ -56,6 +56,7 @@ function warn(
 /** R-HS-01 — steerer taper vs head tube. */
 export function checkHeadsetTaper(frame?: Frame, fork?: Fork): CompatibilityWarning | null {
   if (!frame || !fork) return null;
+  if (frame.headsetTaper == null) return null;
   if (frame.headsetTaper === fork.steererTubeTaper) return null;
   return warn('R-HS-01', 'critical', 'Headset taper mismatch',
     `${frame.brand} ${frame.name} is set up for a ${humanize(frame.headsetTaper)} steerer, but ${fork.brand} ${fork.name} has a ${humanize(fork.steererTubeTaper)} steerer. The headset cups won't seat the fork's steerer tube.`,

@@ -13,11 +13,13 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, ChevronRight, Info, Loader2, Wrench, User } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Info, Loader2, LogIn, Wrench, User } from 'lucide-react';
 import { api, CompatibilityWarning } from '../lib/api-client';
 import { formatGbp } from '../lib/money';
 import { BUILDER_SLOTS, GROUPS, GroupKey, GROUP_OF } from '../lib/categories';
 import PartIcon from './PartIcon';
+import { useDiscipline } from './DisciplineProvider';
+import DisciplineSwitch from './DisciplineSwitch';
 
 interface BuilderMatrixProps {
   buildId: string;
@@ -53,10 +55,14 @@ function deriveSelectedFromBuild(build: any): Record<string, any> {
   return result;
 }
 
+// text-{colour}-text (not text-{colour}) and full opacity (not /80) --
+// the plain accent colour reads 2.68-4.28:1 against its own soft
+// background, short of WCAG AA's 4.5:1 floor for normal text; -text is
+// a darkened same-hue variant that clears it. See tailwind.config.ts.
 const SEVERITY = {
-  critical: { box: 'border-brake-ring bg-brake-soft', head: 'text-brake', body: 'text-brake/80', Icon: AlertTriangle },
-  warning: { box: 'border-drive-ring bg-drive-soft', head: 'text-drive', body: 'text-drive/80', Icon: AlertTriangle },
-  info: { box: 'border-cockpit-ring bg-cockpit-soft', head: 'text-cockpit', body: 'text-cockpit/80', Icon: Info },
+  critical: { box: 'border-brake-ring bg-brake-soft', head: 'text-brake-text', body: 'text-brake-text', Icon: AlertTriangle },
+  warning: { box: 'border-drive-ring bg-drive-soft', head: 'text-drive-text', body: 'text-drive-text', Icon: AlertTriangle },
+  info: { box: 'border-cockpit-ring bg-cockpit-soft', head: 'text-cockpit-text', body: 'text-cockpit-text', Icon: Info },
 } as const;
 
 /** Builder rows, bucketed into their subsystem group, order preserved. */
@@ -65,12 +71,17 @@ const GROUPED_SLOTS = (Object.keys(GROUPS) as GroupKey[])
   .filter((g) => g.slots.length > 0);
 
 export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
+  const { discipline } = useDiscipline();
   const [options, setOptions] = useState<Record<string, any[]>>({});
   const [selected, setSelected] = useState<Record<string, any>>({});
   const [warnings, setWarnings] = useState<CompatibilityWarning[]>([]);
   const [compatible, setCompatible] = useState(true);
   const [loading, setLoading] = useState(true);
   const [rider, setRider] = useState({ heightCm: '', inseamCm: '', weightKg: '' });
+  // Login is optional -- this just tells the rider whether the build
+  // they're looking at will survive them closing the tab (claimed) or
+  // not (anonymous, held only by this build's id).
+  const [isAnonymous, setIsAnonymous] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -88,8 +99,13 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
       inseamCm: build.riderInseamCm?.toString() ?? '',
       weightKg: build.riderWeightKg?.toString() ?? '',
     });
+    setIsAnonymous(Boolean(build.isAnonymous));
     setLoading(false);
-  }, [buildId]);
+    // `discipline` isn't used directly above — getParts() reads the
+    // header switch straight from localStorage — but it's a dependency
+    // so toggling the switch while the builder is open refetches every
+    // slot's options instead of leaving them stale.
+  }, [buildId, discipline]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -116,18 +132,39 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
   const criticalCount = warnings.filter((w) => w.severity === 'critical').length;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8">
-      <h1 className="font-display text-3xl font-bold text-ink mb-1">Bike Builder</h1>
+    <div className="max-w-[1400px] mx-auto px-6 py-8">
+      <div className="flex items-start justify-between gap-4 mb-1">
+        <h1 className="font-display text-3xl font-bold text-ink">Bike Builder</h1>
+        {/* Sits in the white space next to the title -- builder-only,
+            not global chrome. The preference it sets still persists
+            into the picker and /parts pages, just without a visible
+            toggle there. */}
+        <DisciplineSwitch />
+      </div>
       <p className="text-sm text-ink-muted mb-6 max-w-2xl">
         Parts that can&apos;t physically work are filtered out. Ones that need an adapter or spacer
         stay listed, with the remedy noted below.
       </p>
 
+      {/* Optional, not a gate: this build already works fully signed
+          out. Logging in just means it survives past this browser --
+          claimed on login via ?build=, see app/login/page.tsx. */}
+      {isAnonymous && (
+        <Link
+          href={`/login?build=${buildId}`}
+          className="flex items-center gap-2.5 rounded-xl border border-chassis-ring bg-chassis-soft px-4 py-3 mb-6 text-sm text-chassis hover:bg-chassis-soft/70 transition-colors"
+        >
+          <LogIn size={16} className="shrink-0" />
+          This build isn&apos;t saved to an account yet — log in to keep it, or ignore this and keep building.
+          <ChevronRight size={15} className="ml-auto shrink-0" />
+        </Link>
+      )}
+
       {/* Status + totals */}
       <div className="grid sm:grid-cols-3 gap-3 mb-6">
         <div
           className={`sm:col-span-2 flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-sm font-medium shadow-card ${
-            compatible ? 'border-wheel-ring bg-wheel-soft text-wheel' : 'border-brake-ring bg-brake-soft text-brake'
+            compatible ? 'border-wheel-ring bg-wheel-soft text-wheel-text' : 'border-brake-ring bg-brake-soft text-brake-text'
           }`}
         >
           {compatible ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}

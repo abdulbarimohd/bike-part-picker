@@ -419,6 +419,11 @@ describe('headset', () => {
       frame({ headsetTaper: 'TAPERED_1_5_TO_1_125' }), fork({ steererTubeTaper: 'STRAIGHT_1_125' }),
     ), 'R-HS-01');
     fits(e.checkHeadsetTaper(frame({ headsetTaper: 'TAPERED_1_5_TO_1_125' }), fork({ steererTubeTaper: 'TAPERED_1_5_TO_1_125' })));
+    // An unpublished frame taper -- common when a manufacturer states
+    // headset bearing part numbers but never the taper class those
+    // imply -- stays quiet rather than reading null as a mismatch
+    // against every fork.
+    fits(e.checkHeadsetTaper(frame({ headsetTaper: null }), fork({ steererTubeTaper: 'TAPERED_1_5_TO_1_125' })));
   });
 
   test('upper and lower cup standards are checked independently (R-HS-02)', () => {

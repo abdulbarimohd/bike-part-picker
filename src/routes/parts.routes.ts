@@ -59,6 +59,33 @@ function where(obj: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 }
 
+const DISCIPLINES = new Set(['ROAD', 'GRAVEL', 'MTB']);
+
+/**
+ * Merges the header's discipline switch into a category's `where` clause.
+ * Applied once here rather than duplicated into all ~27 `filters()`
+ * functions above -- the discipline lives on `Part`, shared by every
+ * category, so one insertion point at the route handler covers all of
+ * them the same way `config.filters()` does for category-specific fields.
+ *
+ * A part with no `disciplines` recorded stays visible under every filter
+ * (`isEmpty`) -- most of the catalogue isn't classified yet, and treating
+ * "unknown" as "hide it" would make the switch quietly empty most
+ * categories instead of just doing nothing for parts it has no opinion
+ * on, the same abstain-don't-guess default used throughout this schema.
+ */
+function withDiscipline(baseWhere: Record<string, unknown>, q: Record<string, string | undefined>): Record<string, unknown> {
+  if (!q.discipline || !DISCIPLINES.has(q.discipline)) return baseWhere;
+  const existingPart = (baseWhere.part as Record<string, unknown> | undefined) ?? {};
+  return {
+    ...baseWhere,
+    part: {
+      ...existingPart,
+      OR: [{ disciplines: { isEmpty: true } }, { disciplines: { has: q.discipline } }],
+    },
+  };
+}
+
 interface CategoryConfig {
   /** Prisma delegate name on the client. */
   model: string;
@@ -307,7 +334,7 @@ for (const [slug, config] of Object.entries(CATEGORIES)) {
     let rows: any[];
     try {
       rows = await delegate().findMany({
-        where: config.filters(q),
+        where: withDiscipline(config.filters(q), q),
         include: { part: true },
         // Explicit `nulls: 'last'` rather than relying on Postgres's default
         // (which happens to also be NULLS LAST for ASC, but that's an

@@ -18,7 +18,12 @@ WORKDIR /app
 # ------------------------------------------------------------
 FROM base AS build
 COPY package.json package-lock.json ./
-RUN npm ci
+# --ignore-scripts: package.json's postinstall runs `prisma generate`,
+# which needs the schema this layer doesn't have yet -- prisma/ is
+# copied separately below on purpose, so this expensive install layer
+# stays cached across schema-only changes. The explicit `prisma
+# generate` two lines down covers what postinstall would have done.
+RUN npm ci --ignore-scripts
 COPY prisma ./prisma
 RUN npx prisma generate
 COPY tsconfig.json ./
@@ -34,7 +39,9 @@ ENV NODE_ENV=production
 COPY package.json package-lock.json ./
 # `prisma` is a runtime dependency (not dev) so the entrypoint can
 # run `prisma migrate deploy` before the server boots.
-RUN npm ci --omit=dev
+# --ignore-scripts: same reasoning as the build stage above -- the
+# postinstall's `prisma generate` would run before prisma/ is copied.
+RUN npm ci --omit=dev --ignore-scripts
 
 COPY prisma ./prisma
 RUN npx prisma generate

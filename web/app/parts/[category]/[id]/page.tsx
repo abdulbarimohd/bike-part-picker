@@ -37,9 +37,9 @@ export default function PartDetailPage() {
       .finally(() => setLoading(false));
   }, [category, id, config]);
 
-  if (loading) return <div className="max-w-4xl mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>;
-  if (!config) return <div className="max-w-4xl mx-auto px-6 py-10 text-sm text-ink-muted">Unknown category: {category}</div>;
-  if (!part) return <div className="max-w-4xl mx-auto px-6 py-10 text-sm text-ink-muted">Part not found.</div>;
+  if (loading) return <div className="max-w-5xl mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>;
+  if (!config) return <div className="max-w-5xl mx-auto px-6 py-10 text-sm text-ink-muted">Unknown category: {category}</div>;
+  if (!part) return <div className="max-w-5xl mx-auto px-6 py-10 text-sm text-ink-muted">Part not found.</div>;
 
   const prices = part.part.prices ?? [];
 
@@ -67,7 +67,7 @@ export default function PartDetailPage() {
   const best = inStockPrices.length ? Math.min(...inStockPrices) : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
+    <div className="max-w-5xl mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
       <Link href={`/parts/${category}`} className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink mb-6">
         <ArrowLeft size={14} /> {config.label}
       </Link>
@@ -165,10 +165,10 @@ export default function PartDetailPage() {
               <LineChart>
                 <CartesianGrid stroke="rgba(18,20,26,0.06)" vertical={false} />
                 <XAxis dataKey="date" allowDuplicatedCategory={false} tick={{ fontSize: 11, fill: '#5b6472' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#5b6472' }} axisLine={false} tickLine={false} width={44} tickFormatter={(v) => `£${v}`} />
+                <YAxis tick={{ fontSize: 11, fill: '#5b6472' }} axisLine={false} tickLine={false} width={44} tickFormatter={(v) => formatGbp(v * 100)} />
                 <Tooltip
                   contentStyle={{ borderRadius: 10, border: '1px solid rgba(18,20,26,0.08)', fontSize: 12, boxShadow: '0 8px 24px -12px rgba(18,20,26,0.3)' }}
-                  formatter={(v: any) => [`£${v}`, '']}
+                  formatter={(v: any) => [formatGbp(v * 100), '']}
                 />
                 {Object.entries(byVendor).map(([vendor, points], i) => (
                   <Line

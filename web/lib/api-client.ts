@@ -21,6 +21,21 @@ export function isLoggedIn(): boolean {
   return getToken() !== null;
 }
 
+export type Discipline = 'ROAD' | 'GRAVEL' | 'MTB';
+const DISCIPLINE_KEY = 'bikepp_discipline';
+
+// The header switch's global preference, applied to every parts list
+// automatically (see getParts below) rather than each call site having
+// to remember to pass it — same reasoning as the auth token above.
+export function getDiscipline(): Discipline | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem(DISCIPLINE_KEY) as Discipline | null;
+}
+export function setDiscipline(d: Discipline | null) {
+  if (d) localStorage.setItem(DISCIPLINE_KEY, d);
+  else localStorage.removeItem(DISCIPLINE_KEY);
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
 
@@ -70,8 +85,13 @@ export const api = {
   // Parts — one generic pair for all 27 categories. The route table
   // on the server is the single source of truth for what exists.
   getCategories: () => request<{ slug: string; filters: string[] }[]>('/parts/categories'),
+  // The header's discipline switch is merged in here rather than at each
+  // call site — every one of the ~15 places that list parts (builder,
+  // picker, category browse pages) gets it automatically. An explicit
+  // `discipline` in `query` (none currently pass one) would still win,
+  // since it's spread after the default.
   getParts: (slug: string, query?: CategoryQuery) =>
-    request<any[]>(`/parts/${slug}${toQuery(query)}`),
+    request<any[]>(`/parts/${slug}${toQuery({ discipline: getDiscipline() ?? undefined, ...query })}`),
   getPart: (slug: string, partId: string) => request<any>(`/parts/${slug}/${partId}`),
   /** "This doesn't fit — what else would I have to change?" */
   getUpgradePath: (slug: string, partId: string, q: { compatibleWith: string; position?: string; exclude?: string }) =>
@@ -92,6 +112,8 @@ export const api = {
   updateBuild: (id: string, data: { name?: string; isPublic?: boolean; riderHeightCm?: number | null; riderInseamCm?: number | null; riderWeightKg?: number | null }) =>
     request<any>(`/builds/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteBuild: (id: string) => request<void>(`/builds/${id}`, { method: 'DELETE' }),
+  /** Attaches an anonymous (guest) build to the now-logged-in caller. */
+  claimBuild: (id: string) => request<any>(`/builds/${id}/claim`, { method: 'POST' }),
   setBuildPart: (buildId: string, partId: string, opts: { quantity?: number; slot?: string } = {}) =>
     request<any>(`/builds/${buildId}/parts/${partId}`, {
       method: 'PUT',

@@ -7,7 +7,7 @@
 
 import { Router } from 'express';
 import { prisma } from '../prisma/client';
-import { requireAuth } from '../middleware/auth.middleware';
+import { attachUserIfPresent } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -55,11 +55,12 @@ router.get('/:slug', async (req, res) => {
 });
 
 // ------------------------------------------------------------
-// POST /bikes/:slug/clone — copy the factory spec into a new Build
-// owned by the caller. This is what turns "I own this bike" into
-// something the compatibility engine can reason about.
+// POST /bikes/:slug/clone — copy the factory spec into a new Build.
+// Works logged out too, same as POST /builds — the resulting Build
+// is anonymous until POST /builds/:id/claim attaches it to an
+// account, so "I own this bike" doesn't require creating one first.
 // ------------------------------------------------------------
-router.post('/:slug/clone', requireAuth, async (req, res) => {
+router.post('/:slug/clone', attachUserIfPresent, async (req, res) => {
   const bike = await prisma.bikeModel.findUnique({
     where: { slug: req.params.slug },
     include: { parts: true },
@@ -70,7 +71,7 @@ router.post('/:slug/clone', requireAuth, async (req, res) => {
 
   const build = await prisma.build.create({
     data: {
-      userId: req.user!.userId,
+      userId: req.user?.userId ?? null,
       name,
       basedOnModelId: bike.id,
       buildParts: {
