@@ -34,8 +34,106 @@ export interface CompatibilityWarning {
   remedy?: string;
 }
 
+// ------------------------------------------------------------
+// ENUM → PROSE
+//
+// Every enum value that a message template interpolates goes through
+// `humanize()`. It used to be a bare underscore→space, which read
+// "M12 x 1 0 threading" and "TAPERED 1 5 TO 1 125 steerer" -- the
+// decimal points vanished, on a tool whose whole pitch is exact spec
+// matching. Labels below are written per value (not derived by a
+// digit_digit→decimal rule) because the same shape means different
+// things in different families: T47_85_5 is an 85.5mm shell, but
+// BB30_30 is a BB30 shell with a 30mm spindle, not "30.30". They are
+// cased for the middle of a sentence -- generic terms lower-case
+// ("flat mount", "thru-axle"), proper names and standards as they're
+// actually written ("BSA 73", "UDH", "Shimano Di2", "Race Face
+// CINCH") -- and kept in step with the filter labels in
+// web/lib/categories.ts so a warning uses the same words as the
+// dropdown that produced the part.
+//
+// Values shared across families (DIRECT_MOUNT, NONE, FLAT_NONE) get
+// one label that reads correctly in every template that uses them.
+// A value with no entry falls back to `_x_` → " x " then `_` → " ",
+// so a newly added enum member degrades to readable-but-plain rather
+// than throwing.
+// ------------------------------------------------------------
+const ENUM_LABELS: Record<string, string> = {
+  // BbShellStandard
+  BSA_68: 'BSA 68', BSA_73: 'BSA 73', BSA_83: 'BSA 83', BSA_100: 'BSA 100',
+  ITALIAN_70: 'Italian 70', PF92: 'PF92', PF107: 'PF107', BB86: 'BB86', BB90: 'BB90',
+  T47_68: 'T47 68', T47_73: 'T47 73', T47_85_5: 'T47 85.5', BB30: 'BB30', PF30: 'PF30',
+  // SpindleInterface
+  DUB_29: 'DUB 29', GXP: 'GXP', HOLLOWTECH_II_24: 'Hollowtech II 24', CINCH_30: 'CINCH 30',
+  BB30_30: 'BB30 30', OCT_LINK_24: 'Octalink 24', SQUARE_TAPER: 'square taper', ISIS: 'ISIS',
+  // BrakeMountType
+  FLAT_MOUNT: 'flat mount', POST_MOUNT_160: 'post mount 160', POST_MOUNT_180: 'post mount 180',
+  POST_MOUNT: 'post mount', IS_MOUNT: 'IS mount', RIM_BRAKE: 'rim brake',
+  // AxleType
+  THRU_AXLE_142x12: '142×12 thru-axle', THRU_AXLE_148x12_BOOST: 'Boost 148×12 thru-axle',
+  THRU_AXLE_157x12_SUPERBOOST: 'Super Boost 157×12 thru-axle',
+  THRU_AXLE_110x15_BOOST: 'Boost 110×15 thru-axle', THRU_AXLE_100x15: '100×15 thru-axle',
+  THRU_AXLE_100x12: '100×12 thru-axle', THRU_AXLE_20x110_DH: 'DH 20×110 thru-axle',
+  THRU_AXLE_150x12_DH: 'DH 150×12 thru-axle',
+  QUICK_RELEASE_130x9: '130×9 quick-release', QUICK_RELEASE_135x9: '135×9 quick-release',
+  QUICK_RELEASE_100x9: '100×9 quick-release',
+  // AxleThreadPitch
+  M12_x_1_0: 'M12 x 1.0', M12_x_1_5: 'M12 x 1.5', M12_x_1_75: 'M12 x 1.75', M15_x_1_5: 'M15 x 1.5',
+  NONE_QR: 'quick-release (no thread)',
+  // DropoutType
+  THRU_AXLE: 'thru-axle', QUICK_RELEASE: 'quick-release', UDH: 'UDH',
+  // HeadsetTaper
+  TAPERED_1_5_TO_1_125: 'tapered 1.5"–1.125"', STRAIGHT_1_125: 'straight 1.125"', STRAIGHT_1_5: 'straight 1.5"',
+  // HeadsetCupStandard
+  EC34: 'EC34', EC44: 'EC44', EC49: 'EC49', ZS44: 'ZS44', ZS49: 'ZS49', ZS56: 'ZS56',
+  IS41: 'IS41', IS42: 'IS42', IS52: 'IS52',
+  // WheelDiameter
+  ISO_622: '700c / 29"', ISO_584: '650b / 27.5"', ISO_559: '26"', ISO_507: '24"',
+  // FreehubBodyType
+  XD: 'SRAM XD', XDR: 'SRAM XDR', MICRO_SPLINE: 'Shimano Micro Spline',
+  HG_10: 'Shimano HG 10', HG_11: 'Shimano HG 11', HG_12: 'Shimano HG 12', CAMPAGNOLO_N3W: 'Campagnolo N3W',
+  // CablePullStandard
+  SHIMANO_ROAD: 'Shimano Road', SHIMANO_MTB: 'Shimano MTB', SRAM_EXACT_ACTUATION: 'SRAM Exact Actuation',
+  SRAM_X_ACTUATION: 'SRAM X-Actuation', SRAM_FULL_PULL: 'SRAM Full Pull', CAMPAGNOLO: 'Campagnolo',
+  ELECTRONIC_AXS: 'SRAM AXS', ELECTRONIC_DI2: 'Shimano Di2', ELECTRONIC_EPS: 'Campagnolo EPS',
+  // HangerStandard / DerailleurMountStandard / FdMountType (DIRECT_MOUNT shared)
+  PROPRIETARY: 'proprietary', DIRECT_MOUNT: 'direct-mount',
+  STANDARD_HANGER: 'standard hanger', UDH_DIRECT_MOUNT: 'UDH direct-mount',
+  // ChainringMountStandard
+  BCD_104: '104 BCD', BCD_96: '96 BCD', BCD_94: '94 BCD', BCD_110: '110 BCD', BCD_76: '76 BCD',
+  SRAM_3_BOLT: 'SRAM 3-bolt direct-mount', RACE_FACE_CINCH: 'Race Face CINCH',
+  SHIMANO_DIRECT_MOUNT: 'Shimano direct-mount',
+  SRAM_8_BOLT_ROAD_DM: 'SRAM 8-bolt direct-mount (road)', SRAM_8_BOLT_EAGLE_DM: 'SRAM 8-bolt direct-mount (Eagle)',
+  // RotorMountStandard
+  SIX_BOLT: '6-bolt', CENTERLOCK: 'Centerlock',
+  // BrakeFluidType
+  DOT: 'DOT fluid', MINERAL_OIL: 'mineral oil', NONE_MECHANICAL: 'no fluid (mechanical)',
+  // ValveType
+  PRESTA: 'Presta', SCHRADER: 'Schrader',
+  // ShockMountType / ShockSizing
+  STANDARD_EYELET: 'standard eyelet', TRUNNION: 'trunnion', METRIC: 'metric', IMPERIAL: 'imperial',
+  // RoutingType (NONE shared with DropperRemoteType / IscgStandard)
+  INTERNAL: 'internal', EXTERNAL: 'external', MIXED: 'mixed', NONE: 'none',
+  // SaddleRailType
+  ROUND_7MM: 'round 7mm', OVAL_7X9MM: 'oval 7×9mm', ROUND_8MM: 'round 8mm',
+  // BarType
+  FLAT: 'flat', RISER: 'riser', DROP: 'drop', AERO: 'aero',
+  // PedalThread
+  NINE_SIXTEENTHS: '9/16"', HALF_INCH: '1/2"',
+  // CleatSystem / SoleDrilling (FLAT_NONE shared)
+  SPD: 'Shimano SPD', SPD_SL: 'Shimano SPD-SL', LOOK_KEO: 'Look Keo', CRANK_BROTHERS: 'Crank Brothers',
+  TIME: 'Time', SPEEDPLAY: 'Speedplay', FLAT_NONE: 'flat (no cleat mount)',
+  TWO_BOLT: '2-bolt', THREE_BOLT: '3-bolt', TWO_AND_THREE_BOLT: '2-bolt and 3-bolt',
+  // FdMountType (DIRECT_MOUNT above)
+  BRAZE_ON: 'braze-on', CLAMP_28_6: '28.6mm clamp', CLAMP_31_8: '31.8mm clamp', CLAMP_34_9: '34.9mm clamp',
+  // PullDirection
+  TOP_PULL: 'top pull', BOTTOM_PULL: 'bottom pull', DUAL_PULL: 'dual pull', SIDE_SWING: 'Side Swing',
+  // IscgStandard
+  ISCG_05: 'ISCG-05', ISCG_OLD: 'old-standard ISCG', BB_MOUNT: 'BB mount',
+};
+
 function humanize(value: string): string {
-  return value.replace(/_/g, ' ');
+  return ENUM_LABELS[value] ?? value.replace(/_x_/g, ' x ').replace(/_/g, ' ');
 }
 
 function warn(
@@ -317,7 +415,7 @@ export function checkShifterDerailleurPull(shifter?: Shifter, rd?: RearDerailleu
   // Electronic mismatches are reported by R-DRV-03 instead.
   if (ELECTRONIC.includes(shifter.cablePullStandard) || ELECTRONIC.includes(rd.cablePullStandard)) return null;
   return warn('R-DRV-01', 'critical', 'Shifter and derailleur actuation mismatch',
-    `${shifter.brand} ${shifter.name} pulls cable to ${humanize(shifter.cablePullStandard)}, but ${rd.brand} ${rd.name} expects ${humanize(rd.cablePullStandard)}. The derailleur will not land on the cogs.`,
+    `${shifter.brand} ${shifter.name} uses ${humanize(shifter.cablePullStandard)} cable pull, but ${rd.brand} ${rd.name} expects ${humanize(rd.cablePullStandard)}. The derailleur will not land on the cogs.`,
     ['shifter', 'rearDerailleur']);
 }
 
@@ -493,7 +591,7 @@ export function checkUdhTransmission(frame?: Frame, rd?: RearDerailleur): Compat
     // data could actually hide a real incompatibility.
     if (frame.hangerStandard && frame.hangerStandard !== 'UDH') {
       return warn('R-HGR-01', 'warning', "Derailleur mount type isn't recorded",
-        `${rd.brand} ${rd.name}'s mount type (standard hanger vs. UDH direct-mount) isn't in our data. ${frame.brand} ${frame.name} is ${humanize(frame.hangerStandard)}, not UDH — if this turns out to be a UDH direct-mount derailleur (e.g. a SRAM Transmission), it will not fit. Verify before buying.`,
+        `${rd.brand} ${rd.name}'s mount type (standard hanger vs. UDH direct-mount) isn't in our data. ${frame.brand} ${frame.name} uses a ${humanize(frame.hangerStandard)} hanger, not UDH — if this turns out to be a UDH direct-mount derailleur (e.g. a SRAM Transmission), it will not fit. Verify before buying.`,
         ['frame', 'rearDerailleur']);
     }
     return null;
@@ -501,7 +599,7 @@ export function checkUdhTransmission(frame?: Frame, rd?: RearDerailleur): Compat
   if (rd.mountStandard !== 'UDH_DIRECT_MOUNT') return null;
   if (frame.hangerStandard === 'UDH') return null;
   return warn('R-HGR-01', 'critical', 'Transmission derailleur needs a UDH frame',
-    `${rd.brand} ${rd.name} mounts directly to the frame's UDH interface — it has no hanger. ${frame.brand} ${frame.name} is ${frame.hangerStandard ? humanize(frame.hangerStandard) : 'not UDH'}, so there's nothing to bolt to.`,
+    `${rd.brand} ${rd.name} mounts directly to the frame's UDH interface — it has no hanger. ${frame.brand} ${frame.name} ${frame.hangerStandard ? `uses a ${humanize(frame.hangerStandard)} hanger` : "isn't UDH"}, so there's nothing to bolt to.`,
     ['frame', 'rearDerailleur']);
 }
 
@@ -900,7 +998,7 @@ export function checkFrontAxleMatch(fork?: Fork, wheelset?: Wheelset): Compatibi
       ['fork', 'wheelset'], `End cap kit for ${humanize(fork.frontAxleType)}.`);
   }
   return warn('R-AXL-02', 'critical', 'Front axle spacing mismatch',
-    `${fork.brand} ${fork.name} takes a ${humanize(fork.frontAxleType)} front axle, but the ${wheelset.brand} ${wheelset.name} front hub is ${humanize(wheelset.frontAxleType)}. The fork's dropouts won't match the hub.`,
+    `${fork.brand} ${fork.name} is spaced for ${humanize(fork.frontAxleType)}, but the ${wheelset.brand} ${wheelset.name} front hub is ${humanize(wheelset.frontAxleType)}. The fork's dropouts won't match the hub.`,
     ['fork', 'wheelset']);
 }
 
@@ -1046,7 +1144,7 @@ export function checkDropperRouting(frame?: Frame, seatpost?: Seatpost): Compati
   if (seatpost.routingType === 'NONE') return null;
   if (frame.seatpostRouting === seatpost.routingType || frame.seatpostRouting === 'MIXED') return null;
   return warn('R-SP-02', 'critical', 'Dropper routing does not match frame',
-    `${seatpost.brand} ${seatpost.name} is ${humanize(seatpost.routingType)}-routed but ${frame.brand} ${frame.name} is set up for ${humanize(frame.seatpostRouting)}. ${seatpost.routingType === 'INTERNAL' ? 'There is no port in the seat tube for the cable.' : 'An externally routed post has nowhere to run on this frame.'}`,
+    `${seatpost.brand} ${seatpost.name} needs ${humanize(seatpost.routingType)} routing but ${frame.brand} ${frame.name} is set up for ${frame.seatpostRouting === 'NONE' ? 'no dropper routing' : `${humanize(frame.seatpostRouting)} routing`}. ${seatpost.routingType === 'INTERNAL' ? 'There is no port in the seat tube for the cable.' : 'An externally routed post has nowhere to run on this frame.'}`,
     ['frame', 'seatpost']);
 }
 
@@ -1152,7 +1250,7 @@ export function checkBarControlType(handlebar?: Handlebar, shifter?: Shifter, le
   const controlIsDrop = controlType === 'DROP' || controlType === 'AERO';
   if (barIsDrop === controlIsDrop) return null;
   return warn('R-CKP-04', 'critical', 'Controls are for a different bar type',
-    `${handlebar.brand} ${handlebar.name} is a ${humanize(handlebar.barType).toLowerCase()} bar, but these controls are made for ${controlIsDrop ? 'drop' : 'flat'} bars.`,
+    `${handlebar.brand} ${handlebar.name} is a ${humanize(handlebar.barType)} bar, but these controls are made for ${controlIsDrop ? 'drop' : 'flat'} bars.`,
     ['handlebar', shifter ? 'shifter' : 'brakeLever']);
 }
 
@@ -1169,7 +1267,7 @@ export function checkBarInternalRouting(handlebar?: Handlebar, frame?: Frame): C
   if (!handlebar?.internalRouting || !frame) return null;
   if (frame.cableRouting === 'INTERNAL' || frame.cableRouting === 'MIXED') return null;
   return warn('R-CKP-06', 'warning', 'Internally routed bar on an externally routed frame',
-    `${handlebar.brand} ${handlebar.name} routes cables internally, but this frame is ${frame.cableRouting ? humanize(frame.cableRouting).toLowerCase() : 'externally'} routed. The cables have to exit somewhere.`,
+    `${handlebar.brand} ${handlebar.name} routes cables internally, but ${frame.brand} ${frame.name} ${frame.cableRouting === 'NONE' ? 'has no internal routing' : 'is externally routed'}. The cables have to exit somewhere.`,
     ['handlebar', 'frame']);
 }
 
@@ -1216,7 +1314,7 @@ export function checkSoleDrilling(pedal?: Pedal, shoe?: Shoe): CompatibilityWarn
   if (needsTwo && has === 'TWO_BOLT') return null;
   if (needsThree && has === 'THREE_BOLT') return null;
   return warn('R-PDL-03', 'critical', 'Shoe sole drilling does not match cleat',
-    `${pedal.brand} ${pedal.name} uses a ${needsTwo ? '2-bolt' : '3-bolt'} cleat, but ${shoe.brand} ${shoe.name} is drilled ${humanize(has).toLowerCase()}.`,
+    `${pedal.brand} ${pedal.name} uses a ${needsTwo ? '2-bolt' : '3-bolt'} cleat, but ${shoe.brand} ${shoe.name} is drilled ${humanize(has)}.`,
     ['pedal', 'shoe']);
 }
 
@@ -1239,7 +1337,7 @@ export function checkFdPullDirection(frame?: Frame, fd?: FrontDerailleur): Compa
   if (fd.pullDirection === 'DUAL_PULL' || frame.fdPullDirection === 'DUAL_PULL') return null;
   if (frame.fdPullDirection === fd.pullDirection) return null;
   return warn('R-FD-02', 'critical', 'Front derailleur pull direction mismatch',
-    `This frame routes the front shift cable ${humanize(frame.fdPullDirection).toLowerCase()}, but ${fd.brand} ${fd.name} is ${humanize(fd.pullDirection).toLowerCase()}.`,
+    `This frame routes the front shift cable ${humanize(frame.fdPullDirection)}, but ${fd.brand} ${fd.name} is ${humanize(fd.pullDirection)}.`,
     ['frame', 'frontDerailleur']);
 }
 
@@ -1271,7 +1369,7 @@ export function checkChainGuideMount(frame?: Frame, guide?: ChainGuide): Compati
   if (guide.mountStandard === 'BB_MOUNT') return null; // clamps under the BB, no tabs needed
   if (frame.iscgStandard === guide.mountStandard) return null;
   return warn('R-MNT-01', 'critical', 'Chain guide mount mismatch',
-    `${guide.brand} ${guide.name} needs ${humanize(guide.mountStandard)} tabs, but ${frame.brand} ${frame.name} has ${frame.iscgStandard === 'NONE' ? 'no ISCG tabs' : humanize(frame.iscgStandard)}. A BB-mount guide would work instead.`,
+    `${guide.brand} ${guide.name} needs ${humanize(guide.mountStandard)} tabs, but ${frame.brand} ${frame.name} has ${frame.iscgStandard === 'NONE' ? 'no ISCG tabs' : `${humanize(frame.iscgStandard)} tabs`}. A BB-mount guide would work instead.`,
     ['frame', 'chainGuide']);
 }
 
