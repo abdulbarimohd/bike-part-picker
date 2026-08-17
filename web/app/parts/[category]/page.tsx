@@ -8,13 +8,14 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Info } from 'lucide-react';
+import { Info, Weight } from 'lucide-react';
 import FilterSidebar from '../../../components/FilterSidebar';
 import PartIcon from '../../../components/PartIcon';
 import PartImage from '../../../components/PartImage';
 import { useDiscipline } from '../../../components/DisciplineProvider';
 import { api } from '../../../lib/api-client';
-import { formatGbpWhole } from '../../../lib/money';
+import { NO_PRICE, formatGbpWhole, hasPrice } from '../../../lib/money';
+import { splitDisplayName } from '../../../lib/display-name';
 import { CATEGORY_BY_SLUG, GROUPS, accentFor, formatSpecValue } from '../../../lib/categories';
 
 // Categories with no `lockout` entry in src/routes/parts.routes.ts's
@@ -85,9 +86,12 @@ function CategoryPageInner() {
         </div>
         <div>
           <h1 className="font-display text-2xl font-bold text-ink">{config.label}</h1>
-          <p className="text-xs text-ink-muted">
+          {/* Same accent dot the sidebar puts on an active filter, so the
+              category colour reads as a system rather than one icon. */}
+          <p className="text-xs text-ink-muted flex items-center gap-1.5">
+            <span aria-hidden="true" className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: accent }} />
             <span style={{ color: accent }}>{GROUPS[group].label}</span>
-            {!loading && <> · {parts.length} product{parts.length === 1 ? '' : 's'}</>}
+            {!loading && <span>· {parts.length} product{parts.length === 1 ? '' : 's'}</span>}
           </p>
         </div>
 
@@ -143,43 +147,84 @@ function CategoryPageInner() {
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {parts.map((p) => (
-                <Link
-                  key={p.part.id}
-                  href={`/parts/${category}/${p.part.id}`}
-                  className="accent-tile shadow-card flex flex-col"
-                  style={{ ['--accent' as string]: accent }}
-                >
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <PartImage
-                      slug={category}
-                      imageUrl={p.part.imageUrl}
-                      alt={`${p.part.brand} ${p.part.name}`}
-                      className="w-9 h-9"
-                      iconClassName="w-5 h-5"
-                      accent={accent}
-                      soft={soft}
-                    />
-                    <span className="font-display font-bold text-ink">
-                      {formatGbpWhole(p.part.basePricePence)}
-                    </span>
-                  </div>
+              {parts.map((p) => {
+                // Feeds lead the name with the SKU ("FC-M8120-B2 DEORE XT");
+                // the model line leads the card and the code sits under it
+                // in small mono. Presentation only -- see lib/display-name.ts.
+                const dn = splitDisplayName(p.part.brand, p.part.name);
+                const priced = hasPrice(p.part.basePricePence);
+                return (
+                  <Link
+                    key={p.part.id}
+                    href={`/parts/${category}/${p.part.id}`}
+                    className="accent-tile shadow-card flex flex-col"
+                    style={{ ['--accent' as string]: accent }}
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <PartImage
+                        slug={category}
+                        imageUrl={p.part.imageUrl}
+                        alt={`${p.part.brand} ${p.part.name}`}
+                        className="w-9 h-9"
+                        iconClassName="w-5 h-5"
+                        accent={accent}
+                        soft={soft}
+                      />
+                      {/* No published price is a real state (spec sheets carry
+                          no RRP), so it's set quiet rather than in the same
+                          bold as a figure. */}
+                      {priced ? (
+                        <span className="font-display font-bold text-ink">
+                          {formatGbpWhole(p.part.basePricePence)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-ink-muted/80 pt-0.5">{NO_PRICE}</span>
+                      )}
+                    </div>
 
-                  <div className="text-[11px] uppercase tracking-wide text-ink-muted">{p.part.brand}</div>
-                  <div className="text-sm font-medium text-ink leading-snug mb-3">{p.part.name}</div>
+                    {/* Type scale: brand tiny caps (quiet) → title the one
+                        strong line → SKU small mono → pills small and quiet.
+                        The title is clamped to two lines with a matching
+                        min-height so cards in a row line up whatever the
+                        name length. */}
+                    <div className="text-[10px] uppercase tracking-wider text-ink-muted leading-none mb-1">{p.part.brand}</div>
+                    <div className="font-display text-[15px] font-semibold text-ink leading-snug line-clamp-2 min-h-[2.75em]" title={p.part.name}>
+                      {dn.title}
+                    </div>
+                    {dn.sku && <div className="font-mono text-[10px] text-ink-muted/70 mt-0.5 truncate">{dn.sku}</div>}
 
-                  <div className="mt-auto flex flex-wrap gap-1.5">
-                    {preview.map((s) => (
-                      <span key={s.key} className="chip bg-black/[0.04] text-ink-muted">
-                        {formatSpecValue(p[s.key], s.suffix)}
-                      </span>
-                    ))}
-                    {p.part.weightGrams > 0 && (
-                      <span className="chip bg-black/[0.04] text-ink-muted">{p.part.weightGrams}g</span>
-                    )}
-                  </div>
-                </Link>
-              ))}
+                    {/* One fixed-height pill row so a long value wrapping in
+                        one card doesn't push its neighbours out of line;
+                        anything that wraps to a second row is clipped (the
+                        detail page has every spec). Weight is last so a spec
+                        pill is never the one dropped, and it gets its own
+                        outlined treatment + icon so it doesn't read as one
+                        more spec. */}
+                    <div className="mt-auto pt-3 flex flex-wrap content-start gap-1.5 h-[calc(1.5rem+0.75rem)] overflow-hidden">
+                      {preview.map((s) => (
+                        // Same muted "not published" placeholder the pick
+                        // cards use, so a missing spec reads as a known gap
+                        // rather than a chip that failed to render.
+                        p[s.key] == null ? (
+                          <span key={s.key} title={`${s.label}: not published`} className="chip text-[11px] bg-black/[0.02] text-ink-muted/60 font-normal whitespace-nowrap">
+                            —
+                          </span>
+                        ) : (
+                          <span key={s.key} title={s.label} className="chip text-[11px] bg-black/[0.04] text-ink-muted whitespace-nowrap">
+                            {formatSpecValue(p[s.key], s.suffix)}
+                          </span>
+                        )
+                      ))}
+                      {p.part.weightGrams > 0 && (
+                        <span className="chip text-[11px] gap-1 ring-1 ring-inset ring-black/[0.08] bg-white text-ink-muted whitespace-nowrap">
+                          <Weight size={11} className="shrink-0 opacity-70" aria-hidden="true" />
+                          {p.part.weightGrams}g
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

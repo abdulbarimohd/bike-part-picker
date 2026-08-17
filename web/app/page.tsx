@@ -4,10 +4,16 @@ import {
   Check, Info, ListPlus, Eye, ShoppingCart, PoundSterling,
 } from 'lucide-react';
 
+// `tone` gives each concept its own subsystem-tinted icon tile (01.3):
+// full literal class strings so Tailwind's scanner sees them. The hues
+// aren't decoration — each maps to the idea it sits next to: wheel-green
+// for "safe/checked", drive-orange for "adapter fixes it" (the hue
+// BuilderMatrix uses for exactly those warnings), cockpit-blue for the
+// rules engine's advisory voice, brake-red for hard failure.
 const PITCH = [
-  { Icon: ShieldCheck, title: 'True lockout', body: "Parts that can't physically fit are removed from the list, not flagged after the fact." },
-  { Icon: Wrench, title: 'Adapters, not dead ends', body: 'Anything an adapter or spacer solves stays selectable, with the exact part named.' },
-  { Icon: SlidersHorizontal, title: '103 rules', body: 'From bottom bracket shells to hookless rim pressure limits, across 27 categories.' },
+  { Icon: ShieldCheck, tone: 'bg-wheel-soft text-wheel-text ring-wheel-ring', title: 'True lockout', body: "Parts that can't physically fit are removed from the list, not flagged after the fact." },
+  { Icon: Wrench, tone: 'bg-drive-soft text-drive-text ring-drive-ring', title: 'Adapters, not dead ends', body: 'Anything an adapter or spacer solves stays selectable, with the exact part named.' },
+  { Icon: SlidersHorizontal, tone: 'bg-cockpit-soft text-cockpit-text ring-cockpit-ring', title: '103 rules', body: 'From bottom bracket shells to hookless rim pressure limits, across 27 categories.' },
 ];
 
 const HERO_CHECKS = [
@@ -45,7 +51,11 @@ const EXAMPLE_WARNINGS = [
 
 const SEVERITY_STYLE = {
   critical: { box: 'border-brake-ring bg-brake-soft', head: 'text-brake-text', body: 'text-brake-text', Icon: AlertTriangle, label: 'Blocked' },
-  warning: { box: 'border-drive-ring bg-drive-soft', head: 'text-drive-text', body: 'text-drive-text', Icon: AlertTriangle, label: 'Stays selectable' },
+  // `warn-*`, not `drive-*`: in drive-orange, the warning tier read as the
+  // same hue as the H1's gold, collapsing the red/amber/blue status coding.
+  // (BuilderMatrix still uses drive-* for its warning cards — adopting
+  // `warn` there is a separate change.)
+  warning: { box: 'border-warn-ring bg-warn-soft', head: 'text-warn-text', body: 'text-warn-text', Icon: AlertTriangle, label: 'Stays selectable' },
   info: { box: 'border-cockpit-ring bg-cockpit-soft', head: 'text-cockpit-text', body: 'text-cockpit-text', Icon: Info, label: 'Advisory only' },
 } as const;
 
@@ -58,16 +68,19 @@ const STEPS = [
 const WHY = [
   {
     Icon: AlertTriangle,
+    tone: 'bg-brake-soft text-brake-text ring-brake-ring',
     title: 'Standards that aren’t',
     body: 'A "148mm rear axle" varies by brand. A "92mm bottom bracket" is actually four separate, incompatible shells. None of this fails loudly — a part just doesn’t fit, and you find out after it’s unwrapped and half the seatpost is in the frame.',
   },
   {
     Icon: FileCheck2,
+    tone: 'bg-wheel-soft text-wheel-text ring-wheel-ring',
     title: 'Three outcomes, not a maybe',
     body: 'Critical rules remove a part outright — it never even appears as an option. Warnings keep it selectable and name exactly what it needs, because "needs a £12 spacer" and "cannot work" are not the same problem. Info notes are just worth knowing, never blocking.',
   },
   {
     Icon: EyeOff,
+    tone: 'bg-cockpit-soft text-cockpit-text ring-cockpit-ring',
     title: 'Nothing silently guessed',
     body: 'Every part carries a label: read from a manufacturer’s own spec sheet, estimated from a documented standard, or not yet verified. An unconfirmed spec says so — and the engine treats "unknown" as a reason to stay quiet, never as a reason to assume.',
   },
@@ -168,11 +181,15 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Pitch */}
+      {/* Pitch -- per-concept tinted icon tiles (see PITCH's `tone` note)
+          instead of a bare 20px chassis-gold glyph, so the row carries
+          the same visual weight as the hero above it. */}
       <section className="grid md:grid-cols-3 gap-4 mb-14">
-        {PITCH.map(({ Icon, title, body }) => (
+        {PITCH.map(({ Icon, tone, title, body }) => (
           <div key={title} className="rounded-xl bg-white border border-black/5 p-5 shadow-card">
-            <Icon size={20} className="text-chassis mb-3" />
+            <div className={`w-11 h-11 rounded-xl ring-1 flex items-center justify-center mb-3 ${tone}`}>
+              <Icon size={22} />
+            </div>
             <h3 className="font-display font-semibold text-ink mb-1">{title}</h3>
             <p className="text-sm text-ink-muted leading-relaxed">{body}</p>
           </div>
@@ -185,10 +202,10 @@ export default function HomePage() {
       <section className="mb-16 rounded-2xl bg-white border border-black/5 shadow-card p-8 md:p-10">
         <h2 className="font-display text-2xl font-bold text-ink mb-8">Why this exists</h2>
         <div className="space-y-8 max-w-3xl">
-          {WHY.map(({ Icon, title, body }) => (
+          {WHY.map(({ Icon, tone, title, body }) => (
             <div key={title} className="flex gap-4">
-              <div className="w-9 h-9 rounded-lg bg-chassis-soft text-chassis flex items-center justify-center shrink-0">
-                <Icon size={18} />
+              <div className={`w-11 h-11 rounded-xl ring-1 flex items-center justify-center shrink-0 ${tone}`}>
+                <Icon size={22} />
               </div>
               <div>
                 <h3 className="font-display font-semibold text-ink mb-1">{title}</h3>
@@ -211,12 +228,23 @@ export default function HomePage() {
           Checking a build here costs nothing and takes minutes. Ordering the wrong part costs
           the part, the postage, and the wait for a replacement.
         </p>
-        <Link
-          href="/builder"
-          className="inline-flex items-center gap-2 bg-white text-ink text-sm font-medium rounded-xl px-5 py-3 hover:bg-slate-100 transition-colors"
-        >
-          Start a build <ArrowRight size={16} />
-        </Link>
+        {/* Both entry paths, matching the hero pair (08.5) -- the
+            secondary is a quiet outline so the card still reads as one
+            primary action. */}
+        <div className="flex flex-wrap justify-center gap-3">
+          <Link
+            href="/builder"
+            className="inline-flex items-center gap-2 bg-white text-ink text-sm font-medium rounded-xl px-5 py-3 hover:bg-slate-100 transition-colors"
+          >
+            Start a build <ArrowRight size={16} />
+          </Link>
+          <Link
+            href="/my-bike"
+            className="inline-flex items-center gap-2 text-white/90 text-sm font-medium rounded-xl px-5 py-3 border border-white/25 hover:border-white/50 hover:text-white transition-colors"
+          >
+            I already own a bike <ArrowRight size={16} />
+          </Link>
+        </div>
       </section>
     </div>
   );

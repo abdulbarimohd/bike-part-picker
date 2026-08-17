@@ -1,14 +1,40 @@
 // app/privacy/page.tsx
 import Link from 'next/link';
+import { Check } from 'lucide-react';
+import LegalToc from '../../components/LegalToc';
 
 export const metadata = {
   title: 'Privacy Policy — Bike PartPicker',
   description: 'What data Bike PartPicker collects, why, and how to control it.',
 };
 
-const SECTION = 'mb-8';
-const H2 = 'font-display text-lg font-bold text-ink mb-2.5';
+// Shared with terms/page.tsx by convention (02.2): 20px display H2 over
+// 14px body, sections separated by a full mb-10, so the page scans as a
+// document rather than a wall of near-equal text. scroll-mt clears the
+// sticky h-14 header when a TOC anchor jumps here.
+const SECTION = 'mb-10 scroll-mt-20';
+const H2 = 'font-display text-xl font-bold text-ink mb-3';
 const P = 'text-sm text-ink-muted leading-relaxed mb-3';
+
+// The 3 strongest commitments, restated from the sections below (02.4)
+// -- a summary of existing copy, not new claims. If a section below
+// changes, re-check these still match it.
+const TRUST_POINTS = [
+  'No cookies — your login session and preferences live in your browser’s local storage',
+  'No analytics, advertising, or tracking scripts',
+  'Your personal data is never sold, rented, or shared with third parties',
+];
+
+const TOC = [
+  { id: 'collect', label: 'What we collect' },
+  { id: 'cookies', label: 'Cookies and local storage' },
+  { id: 'analytics', label: 'Analytics and third parties' },
+  { id: 'use', label: 'How we use your data' },
+  { id: 'retention', label: 'How long we keep it' },
+  { id: 'rights', label: 'Your rights' },
+  { id: 'changes', label: 'Changes to this policy' },
+  { id: 'contact', label: 'Contact' },
+];
 
 export default function PrivacyPage() {
   return (
@@ -16,7 +42,7 @@ export default function PrivacyPage() {
       <h1 className="font-display text-3xl font-bold text-ink mb-2">Privacy Policy</h1>
       <p className="text-xs text-ink-muted mb-10">Last updated 16 August 2026</p>
 
-      <section className={SECTION}>
+      <section className="mb-8">
         <p className={P}>
           This policy covers Bike PartPicker (bikepartpicker.co.uk and its subdomains). We keep
           this short and specific to what the site actually does — no boilerplate about data
@@ -24,7 +50,27 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      {/* The short version (02.4): the strongest commitments from the
+          sections below, in the same check-circle style as the homepage
+          hero list. Summary only — every line restates copy that
+          already exists further down this page. */}
+      <div className="rounded-2xl bg-white border border-black/5 shadow-card p-5 md:p-6 mb-8">
+        <h2 className="text-xs text-ink-muted uppercase tracking-wide font-semibold mb-3">The short version</h2>
+        <ul className="space-y-2">
+          {TRUST_POINTS.map((text) => (
+            <li key={text} className="flex items-start gap-2.5 text-sm text-ink">
+              <span className="w-5 h-5 rounded-full bg-wheel-soft text-wheel flex items-center justify-center shrink-0 mt-0.5">
+                <Check size={13} strokeWidth={3} />
+              </span>
+              {text}
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <LegalToc items={TOC} />
+
+      <section id="collect" className={SECTION}>
         <h2 className={H2}>What we collect</h2>
         <p className={P}>
           If you create an account: your email address, an optional display name, and a password.
@@ -44,7 +90,7 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="cookies" className={SECTION}>
         <h2 className={H2}>Cookies and local storage</h2>
         <p className={P}>
           We don't use cookies. Your login session (a JSON Web Token) and your Road/Gravel/MTB
@@ -54,7 +100,7 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="analytics" className={SECTION}>
         <h2 className={H2}>Analytics and third parties</h2>
         <p className={P}>
           We don't currently run any analytics, advertising, or tracking scripts on this site. If
@@ -68,7 +114,7 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="use" className={SECTION}>
         <h2 className={H2}>How we use your data</h2>
         <p className={P}>
           To run your account, save your builds, and show you compatible parts. That's it — we
@@ -81,7 +127,7 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="retention" className={SECTION}>
         <h2 className={H2}>How long we keep it</h2>
         <p className={P}>
           For as long as your account exists. We don't currently have a self-service "delete my
@@ -90,7 +136,7 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="rights" className={SECTION}>
         <h2 className={H2}>Your rights</h2>
         <p className={P}>
           Under UK GDPR, you can ask us at any time to see what data we hold on you, correct it, or
@@ -99,7 +145,7 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="changes" className={SECTION}>
         <h2 className={H2}>Changes to this policy</h2>
         <p className={P}>
           If this policy changes in a way that meaningfully affects what we collect or how we use
@@ -107,7 +153,7 @@ export default function PrivacyPage() {
         </p>
       </section>
 
-      <section>
+      <section id="contact" className="scroll-mt-20">
         <h2 className={H2}>Contact</h2>
         <p className={P}>
           Questions about this policy or your data: see the <Link href="/contact" className="text-chassis hover:underline">Contact</Link> page.

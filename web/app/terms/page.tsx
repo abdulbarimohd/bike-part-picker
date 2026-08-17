@@ -1,14 +1,31 @@
 // app/terms/page.tsx
 import Link from 'next/link';
+import { Mail } from 'lucide-react';
+import LegalToc from '../../components/LegalToc';
 
 export const metadata = {
   title: 'Terms of Service — Bike PartPicker',
   description: 'The terms for using Bike PartPicker.',
 };
 
-const SECTION = 'mb-8';
-const H2 = 'font-display text-lg font-bold text-ink mb-2.5';
+// Same treatment as privacy/page.tsx (02.2): 20px display H2 over 14px
+// body, full mb-10 between sections; scroll-mt clears the sticky header
+// for TOC anchor jumps.
+const SECTION = 'mb-10 scroll-mt-20';
+const H2 = 'font-display text-xl font-bold text-ink mb-3';
 const P = 'text-sm text-ink-muted leading-relaxed mb-3';
+
+const TOC = [
+  { id: 'what', label: 'What this is' },
+  { id: 'accuracy', label: 'Accuracy' },
+  { id: 'accounts', label: 'Accounts' },
+  { id: 'content', label: 'Your builds and content' },
+  { id: 'affiliate', label: 'Affiliate links' },
+  { id: 'availability', label: 'Availability' },
+  { id: 'liability', label: 'Liability' },
+  { id: 'changes', label: 'Changes' },
+  { id: 'law', label: 'Governing law' },
+];
 
 export default function TermsPage() {
   return (
@@ -16,15 +33,25 @@ export default function TermsPage() {
       <h1 className="font-display text-3xl font-bold text-ink mb-2">Terms of Service</h1>
       <p className="text-xs text-ink-muted mb-10">Last updated 16 August 2026</p>
 
-      <section className={SECTION}>
+      <section className="mb-8">
         <p className={P}>
           By using Bike PartPicker, you agree to these terms. If you don't agree, please don't use
           the site. We've tried to keep this readable rather than exhaustive — if something's
-          unclear, <Link href="/contact" className="text-chassis hover:underline">ask us</Link>.
+          unclear, ask us.
         </p>
+        {/* Same pill as About's "Get in touch" and the Contact page (06.4);
+            still points at /contact, which holds the mailto. */}
+        <Link
+          href="/contact"
+          className="inline-flex items-center gap-2 bg-white text-ink text-sm font-medium rounded-xl px-4 py-2 border border-black/10 hover:border-black/25 transition-colors"
+        >
+          <Mail size={15} className="text-chassis" /> Email us
+        </Link>
       </section>
 
-      <section className={SECTION}>
+      <LegalToc items={TOC} />
+
+      <section id="what" className={SECTION}>
         <h2 className={H2}>What this is</h2>
         <p className={P}>
           Bike PartPicker is a compatibility-checking tool for bike parts. It is not a retailer:
@@ -34,7 +61,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="accuracy" className={SECTION}>
         <h2 className={H2}>Accuracy — please read this one</h2>
         <p className={P}>
           We take data accuracy seriously: every part on this site carries a label showing where
@@ -50,7 +77,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="accounts" className={SECTION}>
         <h2 className={H2}>Accounts</h2>
         <p className={P}>
           You need an account to save a build permanently, though you can use the builder and browse
@@ -60,7 +87,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="content" className={SECTION}>
         <h2 className={H2}>Your builds and content</h2>
         <p className={P}>
           Builds you create are yours. If you mark a build "public," you're giving anyone with the
@@ -70,7 +97,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="affiliate" className={SECTION}>
         <h2 className={H2}>Affiliate links</h2>
         <p className={P}>
           Some links to retailers may be affiliate links — we may earn a commission if you buy
@@ -80,7 +107,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="availability" className={SECTION}>
         <h2 className={H2}>Availability</h2>
         <p className={P}>
           We aim to keep the site running reliably but don't guarantee uninterrupted availability.
@@ -89,7 +116,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="liability" className={SECTION}>
         <h2 className={H2}>Liability</h2>
         <p className={P}>
           The site is provided "as is." To the extent permitted by law, we're not liable for
@@ -100,7 +127,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section className={SECTION}>
+      <section id="changes" className={SECTION}>
         <h2 className={H2}>Changes</h2>
         <p className={P}>
           We may update these terms from time to time; the date at the top of this page will change
@@ -108,7 +135,7 @@ export default function TermsPage() {
         </p>
       </section>
 
-      <section>
+      <section id="law" className="scroll-mt-20">
         <h2 className={H2}>Governing law</h2>
         <p className={P}>
           These terms are governed by the laws of England and Wales.

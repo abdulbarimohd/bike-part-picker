@@ -38,7 +38,11 @@ export default function MobileNav() {
         aria-expanded={open}
         aria-controls="mobile-nav-panel"
         aria-label={open ? 'Close menu' : 'Open menu'}
-        className="p-2 -mr-1 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
+        // p-3 around the 20px icon makes the hit area 44x44 (comfortable
+        // touch target) without visual bulk -- the button is transparent
+        // until hover. -mr-2 grew alongside the padding so the icon stays
+        // optically in the same spot relative to the container edge.
+        className="p-3 -mr-2 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors"
       >
         {open ? <X size={20} /> : <Menu size={20} />}
       </button>

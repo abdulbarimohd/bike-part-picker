@@ -29,8 +29,11 @@ export interface CategoryConfig {
 const sel = (key: string, label: string, options: [string, string][]): FilterConfig => ({
   key, label, type: 'select', options: options.map(([value, l]) => ({ value, label: l })),
 });
-const range = (key: string, label: string, direction: 'min' | 'max' = 'min'): FilterConfig => ({ key, label, type: 'range', rangeDirection: direction });
+const range = (key: string, label: string, direction: 'min' | 'max' = 'min', unit?: string): FilterConfig => ({ key, label, type: 'range', rangeDirection: direction, ...(unit && { unit }) });
 const yesno = (key: string, label: string): FilterConfig => ({ key, label, type: 'boolean' });
+/** Stamps a section label onto a run of filters — FilterSidebar renders a
+ *  light divider + label where consecutive filters share a `group`. */
+const grp = (group: string, ...fs: FilterConfig[]): FilterConfig[] => fs.map((f) => ({ ...f, group }));
 
 // Each of these option lists is meant to cover its Prisma enum completely --
 // a member with no entry here is unfilterable: it still appears in the
@@ -41,7 +44,11 @@ const yesno = (key: string, label: string): FilterConfig => ({ key, label, type:
 const DIAMETERS: [string, string][] = [['ISO_622', '700c / 29"'], ['ISO_584', '650b / 27.5"'], ['ISO_559', '26"'], ['ISO_507', '24"']];
 const BRAKE_MOUNTS: [string, string][] = [['FLAT_MOUNT', 'Flat Mount'], ['POST_MOUNT_160', 'Post Mount 160'], ['POST_MOUNT_180', 'Post Mount 180'], ['POST_MOUNT', 'Post Mount (size unspecified)'], ['IS_MOUNT', 'IS Mount'], ['RIM_BRAKE', 'Rim Brake']];
 const SPINDLES: [string, string][] = [['DUB_29', 'DUB 29'], ['GXP', 'GXP'], ['HOLLOWTECH_II_24', 'Hollowtech II 24'], ['CINCH_30', 'CINCH 30'], ['BB30_30', 'BB30 30'], ['OCT_LINK_24', 'Octalink 24'], ['SQUARE_TAPER', 'Square taper'], ['ISIS', 'ISIS']];
-const SHELLS: [string, string][] = [['BSA_68', 'BSA 68'], ['BSA_73', 'BSA 73'], ['BSA_83', 'BSA 83'], ['BSA_100', 'BSA 100'], ['ITALIAN_70', 'Italian 70'], ['PF92', 'PF92'], ['PF107', 'PF107'], ['BB86', 'BB86'], ['BB90', 'BB90'], ['T47_68', 'T47 68'], ['T47_73', 'T47 73'], ['BB30', 'BB30'], ['PF30', 'PF30']];
+// T47_85_5 (T47 internal-bearing, 85.5mm shell) and THRU_AXLE_100x12 (front
+// road/gravel 12mm thru-axle) were added to the schema after the 2026-08-14
+// diff -- listed here so they're filterable and so SPEC_LABELS below has a
+// curated label for them ("T47 85.5", not the underscore-stripped "T47 85 5").
+const SHELLS: [string, string][] = [['BSA_68', 'BSA 68'], ['BSA_73', 'BSA 73'], ['BSA_83', 'BSA 83'], ['BSA_100', 'BSA 100'], ['ITALIAN_70', 'Italian 70'], ['PF92', 'PF92'], ['PF107', 'PF107'], ['BB86', 'BB86'], ['BB90', 'BB90'], ['T47_68', 'T47 68'], ['T47_73', 'T47 73'], ['T47_85_5', 'T47 85.5'], ['BB30', 'BB30'], ['PF30', 'PF30']];
 const FREEHUBS: [string, string][] = [['XD', 'SRAM XD'], ['XDR', 'SRAM XDR'], ['MICRO_SPLINE', 'Shimano Micro Spline'], ['HG_12', 'Shimano HG 12 (road)'], ['HG_11', 'Shimano HG 11'], ['HG_10', 'Shimano HG 10/9/8'], ['CAMPAGNOLO_N3W', 'Campagnolo N3W']];
 const CABLE_PULLS: [string, string][] = [['SHIMANO_MTB', 'Shimano MTB'], ['SHIMANO_ROAD', 'Shimano Road'], ['SRAM_X_ACTUATION', 'SRAM X-Actuation'], ['SRAM_EXACT_ACTUATION', 'SRAM Exact Actuation'], ['SRAM_FULL_PULL', 'SRAM Full Pull'], ['ELECTRONIC_AXS', 'SRAM AXS (wireless)'], ['ELECTRONIC_DI2', 'Shimano Di2'], ['ELECTRONIC_EPS', 'Campagnolo EPS'], ['CAMPAGNOLO', 'Campagnolo (mechanical)']];
 // `speeds` is a plain Int, not an enum, so "complete" here means covering
@@ -62,7 +69,7 @@ const HEADSET_CUPS: [string, string][] = [['EC34', 'EC34'], ['EC44', 'EC44'], ['
 // downhill spec; 150x12 and 130x9 are rear-only) -- verified via BikeRadar's
 // axle-standards guides rather than mirrored symmetrically into both lists.
 const AXLES_REAR: [string, string][] = [['THRU_AXLE_148x12_BOOST', 'Boost 148×12'], ['THRU_AXLE_157x12_SUPERBOOST', 'Super Boost 157×12'], ['THRU_AXLE_142x12', '142×12'], ['THRU_AXLE_150x12_DH', 'DH 150×12'], ['QUICK_RELEASE_135x9', 'QR 135×9'], ['QUICK_RELEASE_130x9', 'QR 130×9 (road)']];
-const AXLES_FRONT: [string, string][] = [['THRU_AXLE_110x15_BOOST', 'Boost 110×15'], ['THRU_AXLE_100x15', '100×15'], ['THRU_AXLE_20x110_DH', 'DH 20×110'], ['QUICK_RELEASE_100x9', 'QR 100×9']];
+const AXLES_FRONT: [string, string][] = [['THRU_AXLE_110x15_BOOST', 'Boost 110×15'], ['THRU_AXLE_100x15', '100×15'], ['THRU_AXLE_100x12', '100×12 (road)'], ['THRU_AXLE_20x110_DH', 'DH 20×110'], ['QUICK_RELEASE_100x9', 'QR 100×9']];
 const ROTOR_MOUNTS: [string, string][] = [['SIX_BOLT', '6-bolt'], ['CENTERLOCK', 'Centerlock']];
 const FLUIDS: [string, string][] = [['DOT', 'DOT'], ['MINERAL_OIL', 'Mineral oil'], ['NONE_MECHANICAL', 'Mechanical']];
 const BAR_TYPES: [string, string][] = [['FLAT', 'Flat'], ['RISER', 'Riser'], ['DROP', 'Drop'], ['AERO', 'Aero']];
@@ -86,11 +93,13 @@ export const CATEGORIES: CategoryConfig[] = [
     slots: [{ key: 'frame', label: 'Frame' }],
     filters: [
       sel('material', 'Material', [['CARBON', 'Carbon'], ['ALUMINIUM', 'Aluminium'], ['STEEL', 'Steel'], ['TITANIUM', 'Titanium']]),
-      sel('brakeMount', 'Rear Brake Mount', BRAKE_MOUNTS),
-      sel('bbShell', 'BB Shell', SHELLS),
-      sel('axleType', 'Rear Axle', AXLES_REAR),
-      sel('hanger', 'Hanger', [['UDH', 'UDH'], ['PROPRIETARY', 'Proprietary'], ['DIRECT_MOUNT', 'Direct mount']]),
-      range('minTyreClearance', 'Min. Tyre Clearance (mm)'),
+      ...grp('Interfaces',
+        sel('brakeMount', 'Rear Brake Mount', BRAKE_MOUNTS),
+        sel('bbShell', 'BB Shell', SHELLS),
+        sel('axleType', 'Rear Axle', AXLES_REAR),
+        sel('hanger', 'Hanger', [['UDH', 'UDH'], ['PROPRIETARY', 'Proprietary'], ['DIRECT_MOUNT', 'Direct mount']]),
+      ),
+      range('minTyreClearance', 'Min. Tyre Clearance', 'min', 'mm'),
     ],
     specs: [
       { label: 'BB Standard', key: 'bbShellStandard' }, { label: 'Rear Axle', key: 'rearAxleType' },
@@ -110,13 +119,13 @@ export const CATEGORIES: CategoryConfig[] = [
       { label: 'Shock Leverage Ratio', key: 'leverageRatio' }, { label: 'Coil Shock Suitable', key: 'suitableForCoil' },
       { label: 'Frame Size', key: 'frameSize' }, { label: 'Standover', key: 'standoverMm', suffix: 'mm' },
       { label: 'Reach', key: 'reachMm', suffix: 'mm' }, { label: 'Stack', key: 'stackMm', suffix: 'mm' },
-      { label: 'Rider Height Range', key: 'riderMinHeightCm', suffix: 'cm min' }, { label: 'Rider Height Max', key: 'riderMaxHeightCm', suffix: 'cm max' },
+      { label: 'Rider Height Min', key: 'riderMinHeightCm', suffix: 'cm' }, { label: 'Rider Height Max', key: 'riderMaxHeightCm', suffix: 'cm' },
     ],
   },
   {
     slug: 'forks', label: 'Forks', builderOrder: 2,
     slots: [{ key: 'fork', label: 'Fork' }],
-    filters: [sel('brakeMount', 'Brake Mount', BRAKE_MOUNTS), sel('taper', 'Steerer Taper', TAPERS), sel('axleType', 'Front Axle', AXLES_FRONT), sel('diameter', 'Wheel Size', DIAMETERS), range('maxTravel', 'Max Travel (mm)', 'max')],
+    filters: [...grp('Interfaces', sel('brakeMount', 'Brake Mount', BRAKE_MOUNTS), sel('taper', 'Steerer Taper', TAPERS), sel('axleType', 'Front Axle', AXLES_FRONT)), sel('diameter', 'Wheel Size', DIAMETERS), range('maxTravel', 'Max Travel', 'max', 'mm')],
     specs: [
       { label: 'Steerer', key: 'steererTubeTaper' }, { label: 'Front Axle', key: 'frontAxleType' },
       { label: 'Brake Mount', key: 'brakeMountType' }, { label: 'Travel', key: 'travelMm', suffix: 'mm' },
@@ -138,7 +147,7 @@ export const CATEGORIES: CategoryConfig[] = [
   {
     slug: 'rear-shocks', label: 'Rear Shocks', builderOrder: 4,
     slots: [{ key: 'rearShock', label: 'Rear Shock' }],
-    filters: [range('eyeToEye', 'Eye-to-Eye (mm)'), range('stroke', 'Stroke (mm)'), sel('mount', 'Mount', [['STANDARD_EYELET', 'Standard eyelet'], ['TRUNNION', 'Trunnion']]), yesno('coil', 'Coil')],
+    filters: [...grp('Size', range('eyeToEye', 'Eye-to-Eye', 'min', 'mm'), range('stroke', 'Stroke', 'min', 'mm')), sel('mount', 'Mount', [['STANDARD_EYELET', 'Standard eyelet'], ['TRUNNION', 'Trunnion']]), yesno('coil', 'Coil')],
     specs: [{ label: 'Eye-to-Eye', key: 'eyeToEyeMm', suffix: 'mm' }, { label: 'Stroke', key: 'strokeMm', suffix: 'mm' }, { label: 'Mount', key: 'mountType' }, { label: 'Hardware', key: 'hardwareWidthMm', suffix: 'mm' }, { label: 'Spring', key: 'isCoil' }, { label: 'Spring Rate', key: 'springRate', suffix: 'lb' }],
   },
   {
@@ -150,19 +159,19 @@ export const CATEGORIES: CategoryConfig[] = [
   {
     slug: 'cranksets', label: 'Cranksets', builderOrder: 6,
     slots: [{ key: 'crankset', label: 'Crankset' }],
-    filters: [sel('spindle', 'Spindle', SPINDLES), sel('chainringMount', 'Ring Mount', CHAINRING_MOUNTS), range('crankLength', 'Crank Length (mm)')],
+    filters: [sel('spindle', 'Spindle', SPINDLES), sel('chainringMount', 'Ring Mount', CHAINRING_MOUNTS), range('crankLength', 'Crank Length', 'min', 'mm')],
     specs: [{ label: 'Spindle', key: 'spindleDiameter' }, { label: 'Chainline', key: 'chainlineMm', suffix: 'mm' }, { label: 'Crank Length', key: 'crankLengthMm', suffix: 'mm' }, { label: 'Q-Factor', key: 'qFactorMm', suffix: 'mm' }, { label: 'Ring Mount', key: 'chainringMount' }, { label: 'Pedal Thread', key: 'pedalThread' }],
   },
   {
     slug: 'chainrings', label: 'Chainrings', builderOrder: 7,
     slots: [{ key: 'chainring', label: 'Chainring' }],
-    filters: [sel('mount', 'Mount', CHAINRING_MOUNTS), range('teeth', 'Teeth'), yesno('narrowWide', 'Narrow-Wide')],
+    filters: [sel('mount', 'Mount', CHAINRING_MOUNTS), range('teeth', 'Teeth', 'min', 't'), yesno('narrowWide', 'Narrow-Wide')],
     specs: [{ label: 'Mount', key: 'mountStandard' }, { label: 'Teeth', key: 'teeth', suffix: 't' }, { label: 'Narrow-Wide', key: 'narrowWide' }, { label: 'Offset', key: 'offsetMm', suffix: 'mm' }],
   },
   {
     slug: 'cassettes', label: 'Cassettes', builderOrder: 8,
     slots: [{ key: 'cassette', label: 'Cassette' }],
-    filters: [sel('speeds', 'Speeds', SPEEDS), sel('freehub', 'Freehub Body', FREEHUBS), range('maxCog', 'Max Cog (t)', 'max')],
+    filters: [sel('speeds', 'Speeds', SPEEDS), sel('freehub', 'Freehub Body', FREEHUBS), range('maxCog', 'Max Cog', 'max', 't')],
     specs: [{ label: 'Speeds', key: 'speeds' }, { label: 'Freehub', key: 'freehubBodyType' }, { label: 'Range', key: 'smallestCogTeeth', suffix: 't smallest' }, { label: 'Largest Cog', key: 'largestCogTeeth', suffix: 't' }],
   },
   {
@@ -180,7 +189,7 @@ export const CATEGORIES: CategoryConfig[] = [
   {
     slug: 'rear-derailleurs', label: 'Rear Derailleurs', builderOrder: 11,
     slots: [{ key: 'rearDerailleur', label: 'Rear Derailleur' }],
-    filters: [sel('maxSpeeds', 'Speeds', SPEEDS), sel('cablePull', 'Actuation', CABLE_PULLS), sel('cage', 'Cage', [['SHORT_SS', 'Short (SS)'], ['MEDIUM_GS', 'Medium (GS)'], ['LONG_SGS', 'Long (SGS)']]), sel('mount', 'Mount', [['STANDARD_HANGER', 'Standard hanger'], ['UDH_DIRECT_MOUNT', 'UDH direct (Transmission)'], ['DIRECT_MOUNT', 'Direct mount']]), range('minCogCapacity', 'Min. Cog Capacity (t)')],
+    filters: [sel('maxSpeeds', 'Speeds', SPEEDS), sel('cablePull', 'Actuation', CABLE_PULLS), ...grp('Cage & Mount', sel('cage', 'Cage', [['SHORT_SS', 'Short (SS)'], ['MEDIUM_GS', 'Medium (GS)'], ['LONG_SGS', 'Long (SGS)']]), sel('mount', 'Mount', [['STANDARD_HANGER', 'Standard hanger'], ['UDH_DIRECT_MOUNT', 'UDH direct (Transmission)'], ['DIRECT_MOUNT', 'Direct mount']]), range('minCogCapacity', 'Min. Cog Capacity', 'min', 't'))],
     specs: [{ label: 'Speeds', key: 'maxSpeeds' }, { label: 'Actuation', key: 'cablePullStandard' }, { label: 'Max Cog', key: 'maxCassetteCogTeeth', suffix: 't' }, { label: 'Capacity', key: 'totalCapacityTeeth', suffix: 't' }, { label: 'Cage', key: 'cageLength' }, { label: 'Mount', key: 'mountStandard' }],
   },
   {
@@ -192,13 +201,13 @@ export const CATEGORIES: CategoryConfig[] = [
   {
     slug: 'wheelsets', label: 'Wheelsets', builderOrder: 13,
     slots: [{ key: 'wheelset', label: 'Wheelset' }],
-    filters: [sel('diameter', 'Diameter', DIAMETERS), sel('hubSpacing', 'Rear Hub', AXLES_REAR), sel('freehub', 'Freehub', FREEHUBS), sel('rotorMount', 'Rotor Mount', ROTOR_MOUNTS), yesno('tubelessReady', 'Tubeless Ready'), yesno('hookless', 'Hookless')],
+    filters: [sel('diameter', 'Diameter', DIAMETERS), ...grp('Hub', sel('hubSpacing', 'Rear Hub', AXLES_REAR), sel('freehub', 'Freehub', FREEHUBS), sel('rotorMount', 'Rotor Mount', ROTOR_MOUNTS)), ...grp('Rim', yesno('tubelessReady', 'Tubeless Ready'), yesno('hookless', 'Hookless'))],
     specs: [{ label: 'Diameter', key: 'wheelDiameter' }, { label: 'Front Hub', key: 'frontAxleType' }, { label: 'Rear Hub', key: 'rearAxleType' }, { label: 'Freehub', key: 'freehubBodyType' }, { label: 'Rotor Mount', key: 'rotorMountStandard' }, { label: 'Internal Rim', key: 'internalRimWidthMm', suffix: 'mm' }, { label: 'Hookless', key: 'hookless' }, { label: 'Max Pressure', key: 'maxPressurePsi', suffix: 'psi' }],
   },
   {
     slug: 'tyres', label: 'Tyres', builderOrder: 14,
     slots: [{ key: 'frontTyre', label: 'Front Tyre' }, { key: 'rearTyre', label: 'Rear Tyre' }],
-    filters: [sel('diameter', 'Diameter', DIAMETERS), range('minWidth', 'Min. Width (mm)'), yesno('tubeless', 'Tubeless'), yesno('hooklessSafe', 'Hookless-Safe')],
+    filters: [sel('diameter', 'Diameter', DIAMETERS), range('minWidth', 'Min. Width', 'min', 'mm'), yesno('tubeless', 'Tubeless'), yesno('hooklessSafe', 'Hookless-Safe')],
     specs: [{ label: 'Diameter', key: 'wheelDiameter' }, { label: 'Width', key: 'widthMm', suffix: 'mm' }, { label: 'Tubeless', key: 'tubeless' }, { label: 'Hookless-Safe', key: 'hooklessSafe' }, { label: 'Max Pressure', key: 'maxPressurePsi', suffix: 'psi' }],
   },
   {
@@ -222,37 +231,37 @@ export const CATEGORIES: CategoryConfig[] = [
   {
     slug: 'rotors', label: 'Rotors', builderOrder: 18,
     slots: [{ key: 'frontRotor', label: 'Front Rotor' }, { key: 'rearRotor', label: 'Rear Rotor' }],
-    filters: [range('diameter', 'Diameter (mm)'), sel('mount', 'Mount', ROTOR_MOUNTS)],
+    filters: [range('diameter', 'Diameter', 'min', 'mm'), sel('mount', 'Mount', ROTOR_MOUNTS)],
     specs: [{ label: 'Diameter', key: 'diameterMm', suffix: 'mm' }, { label: 'Mount', key: 'mountStandard' }, { label: 'Lockring', key: 'lockringType' }, { label: 'Thickness', key: 'thicknessMm', suffix: 'mm' }],
   },
   {
     slug: 'handlebars', label: 'Handlebars', builderOrder: 19,
     slots: [{ key: 'handlebar', label: 'Handlebar' }],
-    filters: [range('clamp', 'Clamp Diameter (mm)'), sel('barType', 'Type', BAR_TYPES), range('minWidth', 'Min. Width (mm)')],
+    filters: [range('clamp', 'Clamp Diameter', 'min', 'mm'), sel('barType', 'Type', BAR_TYPES), range('minWidth', 'Min. Width', 'min', 'mm')],
     specs: [{ label: 'Clamp', key: 'clampDiameterMm', suffix: 'mm' }, { label: 'Control Area', key: 'controlClampDiameterMm', suffix: 'mm' }, { label: 'Type', key: 'barType' }, { label: 'Width', key: 'widthMm', suffix: 'mm' }, { label: 'Rise', key: 'riseMm', suffix: 'mm' }],
   },
   {
     slug: 'stems', label: 'Stems', builderOrder: 20,
     slots: [{ key: 'stem', label: 'Stem' }],
-    filters: [range('clamp', 'Bar Clamp (mm)'), range('length', 'Length (mm)')],
+    filters: [range('clamp', 'Bar Clamp', 'min', 'mm'), range('length', 'Length', 'min', 'mm')],
     specs: [{ label: 'Bar Clamp', key: 'barClampDiameterMm', suffix: 'mm' }, { label: 'Steerer', key: 'steererClampMm', suffix: 'mm' }, { label: 'Length', key: 'lengthMm', suffix: 'mm' }, { label: 'Rise', key: 'riseDegrees', suffix: '°' }],
   },
   {
     slug: 'seatposts', label: 'Seatposts', builderOrder: 21,
     slots: [{ key: 'seatpost', label: 'Seatpost' }],
-    filters: [range('diameter', 'Diameter (mm)'), yesno('dropper', 'Dropper'), range('minTravel', 'Min. Travel (mm)'), sel('routing', 'Routing', [['INTERNAL', 'Internal'], ['EXTERNAL', 'External'], ['MIXED', 'Mixed'], ['NONE', 'Wireless']])],
+    filters: [range('diameter', 'Diameter', 'min', 'mm'), ...grp('Dropper', yesno('dropper', 'Dropper'), range('minTravel', 'Min. Travel', 'min', 'mm'), sel('routing', 'Routing', [['INTERNAL', 'Internal'], ['EXTERNAL', 'External'], ['MIXED', 'Mixed'], ['NONE', 'Wireless']]))],
     specs: [{ label: 'Diameter', key: 'diameterMm', suffix: 'mm' }, { label: 'Length', key: 'totalLengthMm', suffix: 'mm' }, { label: 'Dropper', key: 'isDropper' }, { label: 'Travel', key: 'travelMm', suffix: 'mm' }, { label: 'Routing', key: 'routingType' }, { label: 'Remote', key: 'remoteType' }],
   },
   {
     slug: 'seat-clamps', label: 'Seat Clamps', builderOrder: 22,
     slots: [{ key: 'seatClamp', label: 'Seat Clamp' }],
-    filters: [range('diameter', 'Diameter (mm)')],
+    filters: [range('diameter', 'Diameter', 'min', 'mm')],
     specs: [{ label: 'Diameter', key: 'diameterMm', suffix: 'mm' }],
   },
   {
     slug: 'saddles', label: 'Saddles', builderOrder: 23,
     slots: [{ key: 'saddle', label: 'Saddle' }],
-    filters: [sel('rail', 'Rails', [['ROUND_7MM', 'Round 7mm'], ['OVAL_7X9MM', 'Oval 7×9mm'], ['ROUND_8MM', 'Round 8mm']]), range('width', 'Width (mm)')],
+    filters: [sel('rail', 'Rails', [['ROUND_7MM', 'Round 7mm'], ['OVAL_7X9MM', 'Oval 7×9mm'], ['ROUND_8MM', 'Round 8mm']]), range('width', 'Width', 'min', 'mm')],
     specs: [{ label: 'Rails', key: 'railType' }, { label: 'Width', key: 'widthMm', suffix: 'mm' }],
   },
   {
@@ -351,10 +360,79 @@ export const BUILDER_SLOTS: { slot: string; label: string; slug: string; positio
       ...(c.slots.length > 1 && { position: (i === 0 ? 'front' : 'rear') as 'front' | 'rear' }),
     })));
 
-/** Enum values print as "POST MOUNT 180"; booleans as Yes/No. */
+// ------------------------------------------------------------
+// ENUM → LABEL
+//
+// Every option list above already pairs an enum member with its curated
+// human label ("TAPERED_1_5_TO_1_125" → 'Tapered 1.5"–1.125"'). Spec lines
+// used to ignore all of that and just strip underscores, which turned
+// "T47_85_5" into "T47 85 5" -- punctuation lost on a tool whose whole
+// pitch is exact specs. This collects every [value, label] pair from every
+// category's filters into one lookup so a spec line renders the same words
+// the filter dropdown does.
+//
+// Deliberately skipped: pure-numeric values (the SPEEDS list's '12' →
+// '12-speed' would mislabel any other field that happened to hold a
+// numeric string) and NONE, whose filter label 'Wireless' is only true for
+// seatpost routing -- DropperRemoteType and IscgStandard both have a NONE
+// too. Any value in more than one list must have one agreed label; a
+// conflict is dropped from the map so it falls through to the generic
+// formatter rather than picking a side silently.
+// ------------------------------------------------------------
+const SPEC_LABELS: Record<string, string> = (() => {
+  const seen = new Map<string, string>();
+  const conflicts = new Set<string>(['NONE']);
+  for (const c of CATEGORIES) {
+    for (const f of c.filters) {
+      for (const o of f.options ?? []) {
+        if (/^\d+$/.test(o.value)) continue;
+        const prev = seen.get(o.value);
+        if (prev !== undefined && prev !== o.label) conflicts.add(o.value);
+        else seen.set(o.value, o.label);
+      }
+    }
+  }
+  for (const k of conflicts) seen.delete(k);
+  return Object.fromEntries(seen);
+})();
+
+/** Fallback for enum strings with no curated label. Restores the
+ *  punctuation the enum encoding stripped, then underscore → space:
+ *    M12_x_1_0    → "M12 x 1.0"      (`_x_` is a literal ×; 1_0 a decimal)
+ *    T47_85_5     → "T47 85.5"
+ *    CLAMP_31_8   → "CLAMP 31.8"
+ *    POST_MOUNT_180 → "POST MOUNT 180" (single numeric token: no decimal)
+ *  A decimal is only ever two *whole* numeric tokens side by side, so
+ *  "BB30_30" (token BB30 isn't numeric) stays "BB30 30", not "BB30.30". */
+function humaniseEnum(value: string): string {
+  return value
+    .replace(/(^|_)(\d+)_(\d+)(?=_|$)/g, '$1$2.$3')
+    .replace(/_x_/g, ' x ')
+    .replace(/_/g, ' ');
+}
+
+/** Enum values print via their curated filter label where one exists
+ *  ("Post Mount 180", 'Straight 1.125"'), else via humaniseEnum
+ *  ("T47 85.5"); booleans as Yes/No.
+ *
+ *  Self-test (run against this file with tsx on 2026-08-17, all pass):
+ *    formatSpecValue('TAPERED_1_5_TO_1_125') === 'Tapered 1.5"–1.125"'
+ *    formatSpecValue('T47_85_5')             === 'T47 85.5'
+ *    formatSpecValue('BB30_30')              === 'BB30 30'
+ *    formatSpecValue('M12_x_1_0')            === 'M12 x 1.0'
+ *    formatSpecValue('M12_x_1_75')           === 'M12 x 1.75'
+ *    formatSpecValue('CLAMP_31_8')           === 'Clamp 31.8'
+ *    formatSpecValue('STRAIGHT_1_125')       === 'Straight 1.125"'
+ *    formatSpecValue('POST_MOUNT_180')       === 'Post Mount 180'
+ *    formatSpecValue('THRU_AXLE_148x12_BOOST') === 'Boost 148×12'
+ *    formatSpecValue('NONE')                 === 'NONE'   (ambiguous, not mapped)
+ *    formatSpecValue('SOME_UNKNOWN_1_5')     === 'SOME UNKNOWN 1.5'
+ *    formatSpecValue(160, 'mm')              === '160mm'
+ *    formatSpecValue(true)                   === 'Yes'
+ *    formatSpecValue(null)                   === '—' */
 export function formatSpecValue(value: unknown, suffix?: string): string {
   if (value == null) return '—';
   if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-  if (typeof value === 'string') return `${value.replace(/_/g, ' ')}${suffix ?? ''}`;
+  if (typeof value === 'string') return `${SPEC_LABELS[value] ?? humaniseEnum(value)}${suffix ?? ''}`;
   return `${value}${suffix ?? ''}`;
 }

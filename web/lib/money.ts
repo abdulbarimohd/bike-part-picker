@@ -14,6 +14,13 @@ const GBP_WHOLE = new Intl.NumberFormat('en-GB', {
 /// read as free rather than unknown.
 export const NO_PRICE = 'Price unknown';
 
+/** True when a part has a published price. Lets callers branch styling
+ *  for the NO_PRICE state (muted, not bold) instead of string-comparing
+ *  the formatted output. */
+export function hasPrice(pence: number | null | undefined): pence is number {
+  return pence != null;
+}
+
 export function formatGbp(pence: number | null | undefined): string {
   if (pence == null) return NO_PRICE;
   return GBP.format(pence / 100);

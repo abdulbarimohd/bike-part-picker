@@ -13,7 +13,16 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { BookOpen, Wrench, ArrowRight } from 'lucide-react';
 import { api } from '../../lib/api-client';
-import { CATEGORIES, accentFor } from '../../lib/categories';
+import { CATEGORIES, CATEGORY_BY_SLUG, accentFor, formatSpecValue } from '../../lib/categories';
+
+// 04.9: the showcase tiles used to be icon-on-top with two short text
+// lines under it, which at 375px left most of the tile empty. Same
+// data, tighter layout: icon beside the text, plus the frame's first
+// few real catalogue specs (the same fields the /parts/frames listing
+// previews) so the tile earns its height with something checkable
+// rather than padding. Nothing here is invented -- every chip is a
+// field off the fetched row, formatted the same way the catalogue does.
+const FRAME_SPEC_PREVIEW = CATEGORY_BY_SLUG.frames.specs.slice(0, 3);
 
 export default function CompatibilityHubPage() {
   const [frames, setFrames] = useState<any[]>([]);
@@ -54,18 +63,36 @@ export default function CompatibilityHubPage() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-8">
             {frames.map((p) => {
               const { accent, soft } = accentFor('frames');
+              const specs = FRAME_SPEC_PREVIEW.filter((s) => p[s.key] != null);
               return (
                 <Link
                   key={p.part.id}
                   href={`/compatibility/frames/${p.part.id}`}
-                  className="accent-tile shadow-card"
+                  className="accent-tile shadow-card flex flex-col"
                   style={{ ['--accent' as string]: accent }}
                 >
-                  <div className="w-9 h-9 rounded-lg flex items-center justify-center mb-2" style={{ background: soft, color: accent }}>
-                    <Wrench size={16} />
+                  <div className="flex items-start gap-3">
+                    <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: soft, color: accent }}>
+                      <Wrench size={16} />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[11px] uppercase tracking-wide text-ink-muted">{p.part.brand}</div>
+                      <div className="text-sm font-medium text-ink leading-snug">{p.part.name}</div>
+                    </div>
+                    <ArrowRight size={14} className="text-ink-muted/60 shrink-0 mt-1" />
                   </div>
-                  <div className="text-[11px] uppercase tracking-wide text-ink-muted">{p.part.brand}</div>
-                  <div className="text-sm font-medium text-ink leading-snug">{p.part.name}</div>
+                  {specs.length > 0 && (
+                    // mt-auto: in a grid row the tiles stretch to the tallest,
+                    // so the chip row sits on the tile's baseline rather than
+                    // leaving a blank band under it when the name is shorter.
+                    <div className="mt-auto pt-3 flex flex-wrap gap-1.5">
+                      {specs.map((s) => (
+                        <span key={s.key} className="chip bg-black/[0.04] text-ink-muted" title={s.label}>
+                          {formatSpecValue(p[s.key], s.suffix)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </Link>
               );
             })}

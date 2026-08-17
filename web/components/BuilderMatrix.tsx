@@ -13,7 +13,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, ChevronRight, Info, Loader2, LogIn, Wrench, User } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Info, Loader2, Wrench, User } from 'lucide-react';
 import { api, CompatibilityWarning } from '../lib/api-client';
 import { formatGbp } from '../lib/money';
 import { BUILDER_SLOTS, GROUPS, GroupKey, GROUP_OF } from '../lib/categories';
@@ -59,9 +59,12 @@ function deriveSelectedFromBuild(build: any): Record<string, any> {
 // the plain accent colour reads 2.68-4.28:1 against its own soft
 // background, short of WCAG AA's 4.5:1 floor for normal text; -text is
 // a darkened same-hue variant that clears it. See tailwind.config.ts.
+// Warning uses the `warn` status token (yellow), not `drive` (orange):
+// drive is the Drivetrain subsystem colour, so an orange warning card
+// read as "drivetrain" and as the brand gold at the same time.
 const SEVERITY = {
   critical: { box: 'border-brake-ring bg-brake-soft', head: 'text-brake-text', body: 'text-brake-text', Icon: AlertTriangle },
-  warning: { box: 'border-drive-ring bg-drive-soft', head: 'text-drive-text', body: 'text-drive-text', Icon: AlertTriangle },
+  warning: { box: 'border-warn-ring bg-warn-soft', head: 'text-warn-text', body: 'text-warn-text', Icon: AlertTriangle },
   info: { box: 'border-cockpit-ring bg-cockpit-soft', head: 'text-cockpit-text', body: 'text-cockpit-text', Icon: Info },
 } as const;
 
@@ -69,6 +72,14 @@ const SEVERITY = {
 const GROUPED_SLOTS = (Object.keys(GROUPS) as GroupKey[])
   .map((key) => ({ key, group: GROUPS[key], slots: BUILDER_SLOTS.filter((s) => GROUP_OF[s.slug] === key) }))
   .filter((g) => g.slots.length > 0);
+
+/** Build slot key → subsystem group, so a warning's `components` (slot
+ *  keys like 'frame', 'frontTyre') can be colour-coded back to the same
+ *  subsystem hue the builder rows already use. No new taxonomy — this is
+ *  the existing GROUPS mapping read through BUILDER_SLOTS. */
+const SLOT_TO_GROUP: Record<string, GroupKey> = Object.fromEntries(
+  BUILDER_SLOTS.map((s) => [s.slot, GROUP_OF[s.slug] ?? 'misc'])
+);
 
 /** Aggregated "why" result for one empty/low-count slot -- one blocking
  *  rule per row, most-common first, computed client-side from an
@@ -97,6 +108,33 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
   // Only populated on demand when a row's "Why?" is clicked.
   const [whyOpen, setWhyOpen] = useState<Record<string, boolean>>({});
   const [why, setWhy] = useState<Record<string, WhyResult>>({});
+  // Raw (un-lockout-filtered) catalogue size per slot. This is what decides
+  // whether a slot's option count has actually been NARROWED by the rest of
+  // the build (compat count < raw count) versus the category just being
+  // that small — the old `count <= 3` heuristic showed "Why?" on a
+  // 3-option category nothing had narrowed, and hid it on a cassette
+  // narrowed from 40 to 14. Depends only on the discipline switch, not the
+  // build, so it's fetched once per discipline rather than on every pick.
+  const [rawCounts, setRawCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    let cancelled = false;
+    // One request per category, not per slot — paired slots (front/rear
+    // tyre etc.) share the same raw list.
+    // A failed fetch records -1 ("unknown"), not 0 -- 0 would make the
+    // row claim "Nothing in this category yet", which we couldn't verify.
+    const slugs = [...new Set(BUILDER_SLOTS.map((s) => s.slug))];
+    Promise.all(slugs.map((slug) => api.getParts(slug).then((r) => r.length).catch(() => -1)))
+      .then((lens) => {
+        if (cancelled) return;
+        const bySlug = Object.fromEntries(slugs.map((slug, i) => [slug, lens[i]]));
+        setRawCounts(Object.fromEntries(BUILDER_SLOTS.map((s) => [s.slot, bySlug[s.slug] ?? -1])));
+      });
+    return () => { cancelled = true; };
+    // `discipline` matters for the same reason as in refresh() below:
+    // getParts reads the switch from localStorage, and toggling it changes
+    // what the raw catalogue for each category contains.
+  }, [discipline]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -180,9 +218,27 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
   const criticalSlots = new Set(warnings.filter((w) => w.severity === 'critical').flatMap((w) => w.components));
   const warnSlots = new Set(warnings.filter((w) => w.severity === 'warning').flatMap((w) => w.components));
   const criticalCount = warnings.filter((w) => w.severity === 'critical').length;
+  // First load only: `options` is empty until the first refresh() lands.
+  // Later refreshes (a part picked, rider saved) keep the previous state
+  // on screen, so the sticky bar below doesn't blink out and back on
+  // every round-trip -- but before anything has loaded it would just
+  // show a fake "Compatible · 0/30 · £0.00".
+  const neverLoaded = loading && Object.keys(options).length === 0;
+  // Row text for a slot whose raw catalogue is empty. The raw list is
+  // discipline-filtered too, so under "Road" this must not claim the
+  // whole category is empty when it's only empty for road.
+  const disciplineLabel = discipline ? { ROAD: 'Road', GRAVEL: 'Gravel', MTB: 'MTB' }[discipline] : null;
+  const emptyCategoryText = disciplineLabel
+    ? `Nothing in this category for ${disciplineLabel} yet`
+    : 'Nothing in this category yet';
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-8">
+    // The mobile summary bar at the bottom of this file is `sticky`, not
+    // `fixed`: it pins to the viewport edge while the builder is on screen
+    // and then scrolls away with it, so it never sits on top of the footer
+    // -- and being in-flow it takes its own height, so no bottom padding
+    // reservation is needed either.
+    <div className="max-w-[1400px] mx-auto px-6 pt-8 pb-8">
       <div className="flex items-start justify-between gap-4 mb-1">
         <h1 className="font-display text-3xl font-bold text-ink">Bike Builder</h1>
         {/* Sits in the white space next to the title -- builder-only,
@@ -198,30 +254,48 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
 
       {/* Optional, not a gate: this build already works fully signed
           out. Logging in just means it survives past this browser --
-          claimed on login via ?build=, see app/login/page.tsx. */}
+          claimed on login via ?build=, see app/login/page.tsx.
+          Warm drive-soft tint (not chassis-soft, which is near-identical
+          to the page background) so "this can be lost" doesn't read as a
+          tip -- drive-text on drive-soft is the AA-checked pairing from
+          tailwind.config.ts. */}
       {isAnonymous && (
         <Link
           href={`/login?build=${buildId}`}
-          className="flex items-center gap-2.5 rounded-xl border border-chassis-ring bg-chassis-soft px-4 py-3 mb-6 text-sm text-chassis hover:bg-chassis-soft/70 transition-colors"
+          className="flex items-center gap-2.5 rounded-xl border border-drive-ring bg-drive-soft px-4 py-3 mb-6 text-sm font-medium text-drive-text shadow-card hover:bg-drive-soft/70 transition-colors"
         >
-          <LogIn size={16} className="shrink-0" />
+          <AlertTriangle size={16} className="shrink-0" />
           This build isn&apos;t saved to an account yet — log in to keep it, or ignore this and keep building.
           <ChevronRight size={15} className="ml-auto shrink-0" />
         </Link>
       )}
 
-      {/* Status + totals */}
+      {/* Status + totals. When there are notes/issues the pill doubles as
+          a jump link to the #build-notes section at the bottom of a long
+          page -- "2 notes" was otherwise a claim with nothing to click. */}
       <div className="grid sm:grid-cols-3 gap-3 mb-6">
-        <div
-          className={`sm:col-span-2 flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-sm font-medium shadow-card ${
+        {(() => {
+          const statusClass = `sm:col-span-2 flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-sm font-medium shadow-card ${
             compatible ? 'border-wheel-ring bg-wheel-soft text-wheel-text' : 'border-brake-ring bg-brake-soft text-brake-text'
-          }`}
-        >
-          {compatible ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
-          {compatible
-            ? `Compatible${warnings.length ? ` — ${warnings.length} note${warnings.length === 1 ? '' : 's'}` : ''}`
-            : `${criticalCount} blocking issue${criticalCount === 1 ? '' : 's'}`}
-        </div>
+          }`;
+          const statusInner = (
+            <>
+              {compatible ? <CheckCircle2 size={18} className="shrink-0" /> : <AlertTriangle size={18} className="shrink-0" />}
+              {compatible
+                ? `Compatible${warnings.length ? ` — ${warnings.length} note${warnings.length === 1 ? '' : 's'}` : ''}`
+                : `${criticalCount} blocking issue${criticalCount === 1 ? '' : 's'}`}
+            </>
+          );
+          return warnings.length > 0 ? (
+            <a href="#build-notes" className={`${statusClass} hover:brightness-[0.98] transition-[filter]`}>
+              {statusInner}
+              {/* Rotated chevron = "the notes are below you". */}
+              <ChevronRight size={15} className="ml-auto shrink-0 rotate-90 opacity-60" />
+            </a>
+          ) : (
+            <div className={statusClass}>{statusInner}</div>
+          );
+        })()}
         <div className="rounded-xl bg-white border border-black/5 px-4 py-3 shadow-card">
           <div className="flex items-baseline justify-between">
             <span className="text-xs text-ink-muted">Total</span>
@@ -279,12 +353,17 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                 const flagged = warnSlots.has(slot);
                 const chosen = selected[slot];
                 const count = (options[slot] ?? []).length;
-                // "Why?" only makes sense once loading has settled and the
-                // slot is still unfilled -- shown for zero AND low counts
-                // (not just zero) since "Choose from 2" is just as
-                // unexplained as "Nothing compatible yet" when the raw
-                // catalogue for that category is much bigger than 2.
-                const showWhy = !loading && !chosen && count <= 3;
+                const rawCount = rawCounts[slot] as number | undefined;
+                // "Why?" shows on every unfilled slot whose option count the
+                // rest of the build has actually narrowed (compat-filtered
+                // count < raw catalogue count) -- the explain=1 data behind
+                // it exists for every category, so narrowing is the only
+                // real criterion. The old `count <= 3` cutoff was why a
+                // cassette narrowed 40→14 had no "Why?" while an un-narrowed
+                // 3-option category did. Slots whose category is empty
+                // outright get honest row text instead (below), since there
+                // is no blocking rule to explain.
+                const showWhy = !loading && !chosen && rawCount != null && count < rawCount;
                 const whyResult = why[slot];
                 return (
                   <div key={slot} className={i !== 0 ? 'border-t border-black/5' : ''}>
@@ -308,36 +387,77 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                       >
                         <PartIcon slug={slug} className="w-[18px] h-[18px]" />
                       </span>
-                      <span className={`text-sm w-32 shrink-0 ${blocked ? 'text-brake font-medium' : flagged ? 'text-drive' : 'text-ink-muted'}`}>
-                        {label}
-                      </span>
+                      {/* Label + value. From sm up they sit side by side
+                          (fixed-width label column, single truncating value
+                          line). Below sm the label becomes a caption ABOVE
+                          the value, so the value gets the full row width --
+                          side by side at 375px left the name ~25px, which
+                          rendered a chosen part as a bare "S…" and wrapped
+                          "Choose from / 3" against the icons. */}
+                      <span className="flex-1 min-w-0 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+                        <span className={`text-xs sm:text-sm sm:w-32 sm:shrink-0 ${blocked ? 'text-brake font-medium' : flagged ? 'text-drive' : 'text-ink-muted'}`}>
+                          {label}
+                        </span>
 
-                      {loading ? (
-                        <Loader2 size={15} className="animate-spin text-ink-muted/50" />
-                      ) : chosen ? (
-                        <span className="flex-1 min-w-0 text-sm text-ink truncate">
-                          <span className="text-ink-muted">{chosen.part.brand}</span> {chosen.part.name}
-                        </span>
-                      ) : (
-                        <span className="flex-1 min-w-0 flex items-center gap-2 text-sm text-ink-muted/60">
-                          {count === 0 ? 'Nothing compatible yet' : `Choose from ${count}`}
-                          {showWhy && (
-                            <button
-                              type="button"
-                              onClick={() => toggleWhy(slot, slug, position)}
-                              className="relative z-10 inline-flex items-center gap-1 text-[11px] font-medium text-ink-muted/90 underline decoration-dotted underline-offset-2 hover:text-ink"
-                            >
-                              <Info size={11} /> Why?
-                            </button>
-                          )}
-                        </span>
-                      )}
+                        {loading ? (
+                          <Loader2 size={15} className="animate-spin text-ink-muted/50" />
+                        ) : chosen ? (
+                          // Two renderings of the same name rather than one
+                          // span switching between line-clamp and truncate --
+                          // both set `overflow`, so which wins at sm would
+                          // depend on generated-CSS order. Three lines, not
+                          // two: at 375px the name column is ~140px once
+                          // icon, gaps and the price/chevron column are
+                          // taken, and a 38-char name ("Cannondale SuperSix
+                          // EVO CX Carbon Fork") genuinely needs the third
+                          // line to stay readable. Almost every name still
+                          // fits in two, so the row only grows when it must.
+                          <span className="min-w-0 text-sm text-ink">
+                            <span className="line-clamp-3 sm:hidden">
+                              <span className="text-ink-muted">{chosen.part.brand}</span> {chosen.part.name}
+                            </span>
+                            <span className="hidden sm:block truncate">
+                              <span className="text-ink-muted">{chosen.part.brand}</span> {chosen.part.name}
+                            </span>
+                          </span>
+                        ) : (
+                          <span className="min-w-0 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-sm text-ink-muted/60">
+                            {count === 0 ? (
+                              <span>{rawCount === 0 ? emptyCategoryText : 'Nothing compatible yet'}</span>
+                            ) : (
+                              // The count never wraps away from its phrase; if
+                              // anything has to give it's the "Why?" moving to
+                              // the next line, never "Choose from / 3".
+                              <span className="whitespace-nowrap">Choose from {count}</span>
+                            )}
+                            {showWhy && (
+                              <button
+                                type="button"
+                                onClick={() => toggleWhy(slot, slug, position)}
+                                className="relative z-10 inline-flex items-center gap-1 whitespace-nowrap text-[11px] font-medium text-ink-muted/90 underline decoration-dotted underline-offset-2 hover:text-ink"
+                              >
+                                <Info size={11} /> Why?
+                              </button>
+                            )}
+                          </span>
+                        )}
+                      </span>
 
                       <span className="flex items-center gap-2 shrink-0">
                         {chosen && (
-                          <span className="font-display font-semibold text-sm text-ink">
-                            {formatGbp(chosen.part.basePricePence)}
-                          </span>
+                          // No-price is an intentional state, styled quiet
+                          // (same as the listing cards). It's also much
+                          // narrower than the bold treatment, which at 375px
+                          // was squeezing the name column to ~118px.
+                          chosen.part.basePricePence == null ? (
+                            <span className="text-[11px] text-ink-muted/80 whitespace-nowrap">
+                              {formatGbp(chosen.part.basePricePence)}
+                            </span>
+                          ) : (
+                            <span className="font-display font-semibold text-sm text-ink">
+                              {formatGbp(chosen.part.basePricePence)}
+                            </span>
+                          )
                         )}
                         <ChevronRight size={16} className="text-ink-muted/50" />
                       </span>
@@ -375,27 +495,109 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
         ))}
       </div>
 
-      <div className="text-sm text-ink-muted mb-4">
-        {picked.length} of {BUILDER_SLOTS.length} slots filled
+      {/* Same card language as the summary tiles up top, instead of bare
+          grey text floating in the margin -- the thin bar makes "how far
+          through the 30 slots am I" readable at a glance. */}
+      <div className="rounded-xl bg-white border border-black/5 shadow-card px-4 py-3 mb-6 sm:max-w-sm">
+        <div className="flex items-baseline justify-between gap-3 mb-2">
+          <span className="text-xs text-ink-muted">Slots filled</span>
+          <span className="text-sm font-medium text-ink tabular-nums">
+            {picked.length} of {BUILDER_SLOTS.length}
+          </span>
+        </div>
+        <div className="h-1.5 rounded-full bg-black/[0.06] overflow-hidden">
+          <div
+            className="h-full rounded-full bg-chassis transition-all duration-300"
+            style={{ width: `${(picked.length / BUILDER_SLOTS.length) * 100}%` }}
+          />
+        </div>
       </div>
 
-      {warnings.map((w, i) => {
-        const s = SEVERITY[w.severity];
-        return (
-          <div key={`${w.id}-${i}`} className={`rounded-xl border px-4 py-3.5 mb-2.5 ${s.box}`}>
-            <div className={`text-sm font-semibold flex items-center gap-2 ${s.head}`}>
-              <s.Icon size={15} /> {w.title}
-              <span className="ml-auto text-[10px] font-mono opacity-50">{w.id}</span>
-            </div>
-            <div className={`text-sm mt-1 leading-relaxed ${s.body}`}>{w.message}</div>
-            {w.remedy && (
-              <div className={`text-sm mt-2 flex items-center gap-1.5 font-medium ${s.head}`}>
-                <Wrench size={13} /> {w.remedy}
-              </div>
-            )}
+      {/* Jump target for the status pill's "— N notes" anchor. Each note
+          keeps its severity colouring (the AA-checked SEVERITY pairs) and
+          gains a lighter secondary accent -- a left bar plus a small chip
+          in the subsystem group's existing hue, derived from the rule's
+          own `components` slots. No new taxonomy is invented: it's the
+          same group colour-coding the builder rows above already use. */}
+      {warnings.length > 0 && (
+        <div id="build-notes" className="scroll-mt-24">
+          <div className="flex items-center gap-2.5 mb-2">
+            <h2 className="font-display text-xs font-bold uppercase tracking-wider text-ink">Notes</h2>
+            <div className="flex-1 h-px bg-black/5" />
           </div>
-        );
-      })}
+          {warnings.map((w, i) => {
+            const s = SEVERITY[w.severity];
+            const groupKey = w.components.map((c) => SLOT_TO_GROUP[c]).find(Boolean);
+            const group = groupKey ? GROUPS[groupKey] : undefined;
+            return (
+              <div
+                key={`${w.id}-${i}`}
+                className={`rounded-xl border px-4 py-3.5 mb-2.5 ${s.box} ${group ? 'border-l-4' : ''}`}
+                style={group ? { borderLeftColor: group.accent } : undefined}
+              >
+                <div className={`text-sm font-semibold flex items-center gap-2 ${s.head}`}>
+                  <s.Icon size={15} className="shrink-0" /> {w.title}
+                  {group && (
+                    <span className="chip bg-white/70 text-[10px] text-ink-muted whitespace-nowrap px-2 py-0.5">
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: group.accent }} />
+                      {group.label}
+                    </span>
+                  )}
+                  <span className="ml-auto text-[10px] font-mono opacity-50">{w.id}</span>
+                </div>
+                <div className={`text-sm mt-1 leading-relaxed ${s.body}`}>{w.message}</div>
+                {w.remedy && (
+                  <div className={`text-sm mt-2 flex items-center gap-1.5 font-medium ${s.head}`}>
+                    <Wrench size={13} /> {w.remedy}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Slim sticky summary, mobile only (md:hidden -- on desktop the
+          top summary is visible or one flick away, and a bar would just
+          cover content). Bottom edge is the thumb-friendly spot. `sticky`
+          rather than `fixed`: pinned to the viewport bottom while the
+          builder is on screen, then scrolls off with it, so it never covers
+          the site footer. -mx-6 lets it bleed to the viewport edges past
+          the wrapper's px-6. Tapping the status side jumps to the notes
+          when there are any. */}
+      {!neverLoaded && (
+        <div className="sticky bottom-0 -mx-6 mt-6 z-40 md:hidden border-t border-black/10 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+          <div className="max-w-[1400px] mx-auto flex items-center gap-3 px-4 py-2.5 text-sm">
+            {(() => {
+              const stickyStatus = (
+                <>
+                  {compatible ? <CheckCircle2 size={15} className="shrink-0" /> : <AlertTriangle size={15} className="shrink-0" />}
+                  <span className="whitespace-nowrap">
+                    {compatible
+                      ? `Compatible${warnings.length ? ` · ${warnings.length} note${warnings.length === 1 ? '' : 's'}` : ''}`
+                      : `${criticalCount} issue${criticalCount === 1 ? '' : 's'}`}
+                  </span>
+                </>
+              );
+              const cls = `inline-flex items-center gap-1.5 font-medium ${compatible ? 'text-wheel-text' : 'text-brake-text'}`;
+              return warnings.length > 0 ? (
+                <a href="#build-notes" className={cls}>{stickyStatus}</a>
+              ) : (
+                <span className={cls}>{stickyStatus}</span>
+              );
+            })()}
+            <span className="text-xs text-ink-muted tabular-nums whitespace-nowrap">
+              {picked.length}/{BUILDER_SLOTS.length} slots
+            </span>
+            <span className="ml-auto text-right leading-tight">
+              <span className="block font-display font-semibold text-ink tabular-nums">{formatGbp(totalPricePence)}</span>
+              {unpricedCount > 0 && (
+                <span className="block text-[10px] text-ink-muted">+{unpricedCount} unpriced</span>
+              )}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

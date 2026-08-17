@@ -13,6 +13,19 @@ import { Search, Loader2, ArrowRight, Bike } from 'lucide-react';
 import { api, clearToken, BikeModel } from '../../lib/api-client';
 import { formatGbpWhole } from '../../lib/money';
 
+// Some imported rows carry the model year inside the name itself
+// ("Topstone 1 2024" with year 2024) while the year is already printed
+// in the subtitle line below — rendering both reads as a stutter.
+// Display-only strip: the stored model/variant is untouched, and the
+// year is only removed when it exactly matches the year shown in the
+// subtitle, so a genuine name like "Process 134" never loses digits.
+function stripRedundantYear(text: string | null | undefined, year: number): string {
+  const t = (text ?? '').trim();
+  if (!t) return '';
+  if (t === String(year)) return '';
+  return t.replace(new RegExp(`\\s+${year}$`), '');
+}
+
 export default function MyBikePage() {
   const router = useRouter();
   const [query, setQuery] = useState('');
@@ -103,7 +116,10 @@ export default function MyBikePage() {
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {bikes.map((bike) => (
+          {bikes.map((bike) => {
+            const model = stripRedundantYear(bike.model, bike.year);
+            const variant = stripRedundantYear(bike.variant, bike.year);
+            return (
             <button
               key={bike.slug}
               onClick={() => choose(bike)}
@@ -117,13 +133,13 @@ export default function MyBikePage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="font-display font-semibold text-ink">
-                  {bike.brand} {bike.model}
-                  {bike.variant && <span className="text-ink-muted font-normal"> {bike.variant}</span>}
+                  {bike.brand} {model || bike.model}
+                  {variant && <span className="text-ink-muted font-normal"> {variant}</span>}
                 </div>
                 <div className="text-xs text-ink-muted mt-0.5">
                   {bike.year}
                   {bike.discipline && <> · {bike.discipline}</>}
-                  {bike._count && <> · {bike._count.parts} components</>}
+                  {bike._count && <> · {bike._count.parts} component{bike._count.parts === 1 ? '' : 's'}</>}
                   {bike.msrpPence && <> · {formatGbpWhole(bike.msrpPence)} new</>}
                 </div>
               </div>
@@ -131,7 +147,8 @@ export default function MyBikePage() {
                 ? <Loader2 size={17} className="animate-spin text-contact shrink-0" />
                 : <ArrowRight size={17} className="text-ink-muted shrink-0" />}
             </button>
-          ))}
+            );
+          })}
         </div>
       )}
 

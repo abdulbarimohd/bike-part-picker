@@ -46,6 +46,18 @@ const config: Config = {
         wheel: { DEFAULT: '#059669', soft: '#ecfdf5', ring: '#a7f3d0', text: '#04815b' },
         brake: { DEFAULT: '#e11d48', soft: '#fff1f2', ring: '#fecdd3', text: '#d71c45' },
         cockpit: { DEFAULT: '#0284c7', soft: '#f0f9ff', ring: '#bae6fd', text: '#0276b3' },
+        // `warn` is a STATUS colour, not a subsystem: the "stays
+        // selectable, needs an adapter" severity tier. It exists because
+        // borrowing drive-orange for warnings made the warning state read
+        // as both "Drivetrain" and "essentially the H1's gold" at once.
+        // Deliberately true YELLOW (yellow-50/200/500/800), not amber:
+        // amber-800 was still visibly the same brown-gold family as the
+        // `chassis` brand accent. `text` measures 6.6:1 on `soft`, 6.9:1
+        // on white and 5.9:1 on `ring` — clear of the 4.5:1 AA floor.
+        // Used by every warning-severity card (homepage demo, Builder,
+        // My Bike) so the "what you see here is what you get there"
+        // promise on the homepage holds.
+        warn: { DEFAULT: '#eab308', soft: '#fefce8', ring: '#fef08a', text: '#854d0e' },
         contact: { DEFAULT: '#78350f', soft: '#f1f5f9', ring: '#e2e8f0' }, // brown text, silver ribbon
         misc: { DEFAULT: '#475569', soft: '#f8fafc', ring: '#cbd5e1' },
       },

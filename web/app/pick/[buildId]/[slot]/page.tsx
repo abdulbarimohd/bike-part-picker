@@ -18,7 +18,45 @@ import PartIcon from '../../../../components/PartIcon';
 import { useDiscipline } from '../../../../components/DisciplineProvider';
 import { api, UpgradePath, UpgradePathChange } from '../../../../lib/api-client';
 import { BUILDER_SLOTS, CATEGORY_BY_SLUG, accentFor, formatSpecValue } from '../../../../lib/categories';
-import { formatGbp } from '../../../../lib/money';
+import { splitDisplayName } from '../../../../lib/display-name';
+import { formatGbp, hasPrice } from '../../../../lib/money';
+
+/**
+ * Card price. A null basePricePence is a real, common state (manufacturer
+ * spec sheets carry no RRP) — it renders muted, non-bold and smaller so a
+ * card without a price doesn't shout as loudly as one with a figure.
+ */
+function CardPrice({ pence }: { pence: number | null | undefined }) {
+  if (!hasPrice(pence)) {
+    return <span className="text-xs text-ink-muted/70 whitespace-nowrap">{formatGbp(pence)}</span>;
+  }
+  return <span className="font-display font-bold text-ink whitespace-nowrap">{formatGbp(pence)}</span>;
+}
+
+/**
+ * "one rear shock" / "2 rear shocks", but "one set of pedals" / "2 sets
+ * of pedals" for the slot labels that are already plural (Pedals, Shoes,
+ * Brake Calipers, Brake Levers).
+ */
+function countNoun(slotName: string, n: number): string {
+  if (/s$/.test(slotName)) return n === 1 ? `set of ${slotName}` : `sets of ${slotName}`;
+  return n === 1 ? slotName : `${slotName}s`;
+}
+
+/**
+ * Feeds often lead the name with the SKU ("FC-FRC-1W-D2 Force 1 Wide
+ * Crankset"). The model line leads; the code, if any, sits under it in
+ * small mono. Presentation-only — see lib/display-name.ts.
+ */
+function PartTitle({ brand, name }: { brand?: string | null; name: string }) {
+  const dn = splitDisplayName(brand, name);
+  return (
+    <>
+      <div className="text-sm font-medium text-ink leading-snug">{dn.title}</div>
+      {dn.sku && <div className="font-mono text-[10px] text-ink-muted/70 mt-0.5">{dn.sku}</div>}
+    </>
+  );
+}
 
 function PickerInner() {
   const { buildId, slot } = useParams<{ buildId: string; slot: string }>();
@@ -75,11 +113,15 @@ function PickerInner() {
   const fits = parts.filter((p) => p.compatible !== false);
   const blocked = parts.filter((p) => p.compatible === false);
   const preview = category.specs.slice(0, 3);
+  const slotName = slotConfig.label.toLowerCase();
 
   return (
-    <div className="max-w-[1400px] mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
+    // pb-4 (not py-8's bottom half): the global <main> already carries
+    // pb-20, so a 1–2 card result page doesn't need a second band of
+    // empty space under a mostly empty grid.
+    <div className="max-w-[1400px] mx-auto px-6 pt-8 pb-4" style={{ ['--accent' as string]: accent }}>
       <Link href={from} className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink mb-5">
-        <ArrowLeft size={14} /> Back to your build
+        <ArrowLeft size={14} /> {isMyBike ? 'Back to your bike' : 'Back to your build'}
       </Link>
 
       <div className="flex items-center gap-3 mb-6">
@@ -89,7 +131,9 @@ function PickerInner() {
         <div>
           <h1 className="font-display text-2xl font-bold text-ink">Choose {slotConfig.label.toLowerCase()}</h1>
           <p className="text-xs text-ink-muted">
-            {loading ? 'Checking what fits…' : `${fits.length} fit your build${blocked.length ? ` · ${blocked.length} don't` : ''}`}
+            {loading
+              ? 'Checking what fits…'
+              : `${fits.length} fit${fits.length === 1 ? 's' : ''} your build${blocked.length ? ` · ${blocked.length} ${blocked.length === 1 ? "doesn't" : "don't"}` : ''}`}
           </p>
         </div>
         {currentId && (
@@ -111,7 +155,21 @@ function PickerInner() {
               <p className="text-sm text-ink-muted">Nothing in the catalogue fits here yet.</p>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+            <>
+              {/* A short list is the filter doing its job against this
+                  build's other parts, not a thin catalogue — say so, or
+                  the mostly-empty grid reads as broken. */}
+              {fits.length <= 2 && (
+                <p className="text-sm text-ink-muted mb-4 max-w-2xl">
+                  Only {fits.length === 1 ? 'one' : fits.length} {countNoun(slotName, fits.length)}
+                  {fits.length === 1 ? ' fits' : ' fit'} the parts already on this build
+                  {blocked.length > 0
+                    ? ` — the other ${blocked.length} in the catalogue ${blocked.length === 1 ? 'is' : 'are'} listed below with the reason.`
+                    : '.'}
+                  {' '}That&apos;s the filter working, not a missing catalogue.
+                </p>
+              )}
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-start">
               {fits.map((p) => {
                 const selected = p.partId === currentId;
                 return (
@@ -137,23 +195,33 @@ function PickerInner() {
                         )}
                         {saving === p.partId
                           ? <Loader2 size={15} className="animate-spin text-ink-muted" />
-                          : <span className="font-display font-bold text-ink">{formatGbp(p.part.basePricePence)}</span>}
+                          : <CardPrice pence={p.part.basePricePence} />}
                       </div>
                     </div>
                     <div className="text-[11px] uppercase tracking-wide text-ink-muted">{p.part.brand}</div>
-                    <div className="text-sm font-medium text-ink leading-snug mb-3">{p.part.name}</div>
+                    <div className="mb-3">
+                      <PartTitle brand={p.part.brand} name={p.part.name} />
+                    </div>
                     <div className="mt-auto flex flex-wrap gap-1.5">
+                      {/* Unpublished spec values get one lighter, muted
+                          look (with the field's unit) so a "—" doesn't
+                          sit at the same weight as a real figure. */}
                       {preview.map((s) => (
-                        <span key={s.key} className="chip bg-black/[0.04] text-ink-muted">
-                          {formatSpecValue(p[s.key], s.suffix)}
-                        </span>
+                        p[s.key] == null
+                          ? <span key={s.key} title={`${s.label}: not published`} className="chip bg-black/[0.02] text-ink-muted/60 font-normal">
+                              —
+                            </span>
+                          : <span key={s.key} title={s.label} className="chip bg-black/[0.04] text-ink-muted">
+                              {formatSpecValue(p[s.key], s.suffix)}
+                            </span>
                       ))}
-                      {p.part.weightGrams > 0 && <span className="chip bg-black/[0.04] text-ink-muted">{p.part.weightGrams}g</span>}
+                      {p.part.weightGrams > 0 && <span className="chip bg-black/[0.04] text-ink-muted" title="Weight">{p.part.weightGrams}g</span>}
                     </div>
                   </button>
                 );
               })}
             </div>
+            </>
           )}
 
           {/* Incompatible options stay visible, with the reason. */}
@@ -202,6 +270,7 @@ function BlockedRow({ part, slug, buildId, position, isMyBike, onApplied }: {
   const [path, setPath] = useState<UpgradePath | null>(null);
   const [solving, setSolving] = useState(false);
   const [applying, setApplying] = useState(false);
+  const blockedName = splitDisplayName(part.part.brand, part.part.name);
 
   async function solve() {
     setSolving(true);
@@ -230,11 +299,12 @@ function BlockedRow({ part, slug, buildId, position, isMyBike, onApplied }: {
     <div className="px-4 py-3">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-sm text-ink">
-          <span className="text-ink-muted">{part.part.brand}</span> {part.part.name}
+          <span className="text-ink-muted">{part.part.brand}</span> {blockedName.title}
+          {blockedName.sku && <span className="font-mono text-[10px] text-ink-muted/70"> {blockedName.sku}</span>}
         </span>
-        <span className="text-sm text-ink-muted line-through shrink-0">
-          {formatGbp(part.part.basePricePence)}
-        </span>
+        {!hasPrice(part.part.basePricePence)
+          ? <span className="text-xs text-ink-muted/70 shrink-0">{formatGbp(null)}</span>
+          : <span className="text-sm text-ink-muted line-through shrink-0">{formatGbp(part.part.basePricePence)}</span>}
       </div>
 
       {part.blockedBy?.map((b: any) => (
@@ -269,9 +339,9 @@ function BlockedRow({ part, slug, buildId, position, isMyBike, onApplied }: {
           {r.changes.map((c) => (
             <div key={c.slot} className="text-xs text-ink flex flex-wrap gap-x-1.5">
               <span className="text-ink-muted capitalize">{c.slot.replace(/([A-Z])/g, ' $1').toLowerCase()}:</span>
-              <span className="font-medium">{c.brand} {c.name}</span>
+              <span className="font-medium">{c.brand} {splitDisplayName(c.brand, c.name).title}</span>
               <span className="text-ink-muted">{formatGbp(c.pricePence)}</span>
-              {c.replaces && <span className="text-ink-muted">(was {c.replaces.name})</span>}
+              {c.replaces && <span className="text-ink-muted">(was {splitDisplayName(c.replaces.brand, c.replaces.name).title})</span>}
             </div>
           ))}
           <div className="flex items-center gap-3 mt-2">
