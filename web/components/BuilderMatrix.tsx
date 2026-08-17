@@ -108,6 +108,9 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
   // Only populated on demand when a row's "Why?" is clicked.
   const [whyOpen, setWhyOpen] = useState<Record<string, boolean>>({});
   const [why, setWhy] = useState<Record<string, WhyResult>>({});
+  // "What is this part" panel per row -- independent of whyOpen, so both
+  // can be open on the same row at once without fighting over one flag.
+  const [infoOpen, setInfoOpen] = useState<Record<string, boolean>>({});
   // Raw (un-lockout-filtered) catalogue size per slot. This is what decides
   // whether a slot's option count has actually been NARROWED by the rest of
   // the build (compat count < raw count) versus the category just being
@@ -397,17 +400,24 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                       <span className="flex-1 min-w-0 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
                         <span className={`flex items-center gap-1 text-xs sm:text-sm sm:w-32 sm:shrink-0 ${blocked ? 'text-brake font-medium' : flagged ? 'text-drive' : 'text-ink-muted'}`}>
                           {label}
-                          {/* Plain-English "what is this part" tooltip -- not a
+                          {/* Plain-English "what is this part" panel -- not a
                               compatibility explainer (that's "Why?" below), just
                               what the category means, for anyone building their
-                              first bike from a parts list. `relative z-10` lifts
-                              it above the row's absolutely-positioned nav Link,
-                              same trick "Why?" already uses. */}
+                              first bike from a parts list. Click-to-reveal, not a
+                              bare `title` tooltip: `title` needs a held hover on
+                              an 11px target and does effectively nothing on touch,
+                              which is most of this site's traffic (see MobileNav).
+                              `relative z-10` lifts the button above the row's
+                              absolutely-positioned nav Link, same trick "Why?"
+                              already uses. `title` is kept too, as a bonus for
+                              desktop mouse users who do hover long enough. */}
                           <button
                             type="button"
                             title={CATEGORY_BY_SLUG[slug]?.description}
                             aria-label={`What is ${label}?`}
-                            className="relative z-10 shrink-0 text-ink-muted/40 hover:text-ink-muted"
+                            aria-expanded={Boolean(infoOpen[slot])}
+                            onClick={() => setInfoOpen((o) => ({ ...o, [slot]: !o[slot] }))}
+                            className={`relative z-10 shrink-0 rounded-full ${infoOpen[slot] ? 'text-contact' : 'text-ink-muted/40 hover:text-ink-muted'}`}
                           >
                             <Info size={11} />
                           </button>
@@ -476,6 +486,12 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                         <ChevronRight size={16} className="text-ink-muted/50" />
                       </span>
                     </div>
+
+                    {infoOpen[slot] && (
+                      <div className="relative z-10 border-t border-black/5 bg-black/[0.015] px-3.5 py-2.5 pl-[3.25rem] text-xs text-ink-muted">
+                        {CATEGORY_BY_SLUG[slug]?.description}
+                      </div>
+                    )}
 
                     {whyOpen[slot] && (
                       <div className="relative z-10 border-t border-black/5 bg-black/[0.015] px-3.5 py-2.5 pl-[3.25rem] text-xs text-ink-muted">

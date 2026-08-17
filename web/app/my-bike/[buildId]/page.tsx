@@ -156,6 +156,9 @@ export default function UpgradePage() {
   const [compatible, setCompatible] = useState(true);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // "What is this part" panel per row, click-to-reveal -- see BuilderMatrix
+  // for why this isn't just a `title` tooltip (11px target, no touch support).
+  const [infoOpen, setInfoOpen] = useState<Record<string, boolean>>({});
 
   const refresh = useCallback(async () => {
     const b = await api.getBuild(buildId);
@@ -403,15 +406,18 @@ export default function UpgradePage() {
                       <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
                         <span className={`flex items-center gap-1 text-sm sm:w-32 shrink-0 ${blocked ? 'text-brake-text font-medium' : 'text-ink-muted'}`}>
                           {label}
-                          {/* Plain-English "what is this part" tooltip, same
+                          {/* Plain-English "what is this part" panel, same
                               as the scratch builder -- useful here too since
                               a stock bike's owner didn't necessarily pick any
-                              of these parts themselves. */}
+                              of these parts themselves. Click-to-reveal, not
+                              just a `title` tooltip -- see BuilderMatrix for why. */}
                           <button
                             type="button"
                             title={CATEGORY_BY_SLUG[slug]?.description}
                             aria-label={`What is ${label}?`}
-                            className="shrink-0 text-ink-muted/40 hover:text-ink-muted"
+                            aria-expanded={Boolean(infoOpen[slot])}
+                            onClick={() => setInfoOpen((o) => ({ ...o, [slot]: !o[slot] }))}
+                            className={`shrink-0 rounded-full ${infoOpen[slot] ? 'text-contact' : 'text-ink-muted/40 hover:text-ink-muted'}`}
                           >
                             <Info size={11} />
                           </button>
@@ -461,6 +467,12 @@ export default function UpgradePage() {
                         </button>
                       )}
                     </div>
+
+                    {infoOpen[slot] && (
+                      <div className="mt-1.5 ml-11 text-xs text-ink-muted">
+                        {CATEGORY_BY_SLUG[slug]?.description}
+                      </div>
+                    )}
 
                     {isChanged && (
                       <div className="flex flex-wrap items-center gap-2 mt-1.5 ml-11 text-xs">
