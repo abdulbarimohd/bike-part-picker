@@ -111,6 +111,13 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
   // "What is this part" panel per row -- independent of whyOpen, so both
   // can be open on the same row at once without fighting over one flag.
   const [infoOpen, setInfoOpen] = useState<Record<string, boolean>>({});
+  // Per-row compatibility-warning disclosure -- distinct from BOTH panels
+  // above: infoOpen explains the category in general, "Why?" explains why
+  // an EMPTY slot's options are narrowed, neither says anything about a
+  // warning on a part that's already CHOSEN. No new fetch: `warnings` is
+  // already loaded for the whole build by refresh() below, this just
+  // reads back the entries whose `components` name this slot.
+  const [warnOpen, setWarnOpen] = useState<Record<string, boolean>>({});
   // Raw (un-lockout-filtered) catalogue size per slot. This is what decides
   // whether a slot's option count has actually been NARROWED by the rest of
   // the build (compat count < raw count) versus the category just being
@@ -354,6 +361,12 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
               {slots.map(({ slot, label, slug, position }, i) => {
                 const blocked = criticalSlots.has(slot);
                 const flagged = warnSlots.has(slot);
+                // The specific warning object(s) naming this slot, not just
+                // the boolean -- `blocked`/`flagged` say whether to tint the
+                // row, this is what the new warning icon's panel actually
+                // shows. A slot can appear in more than one warning's
+                // `components` (rare, but the panel lists all of them).
+                const rowWarnings = warnings.filter((w) => w.components.includes(slot));
                 const chosen = selected[slot];
                 const count = (options[slot] ?? []).length;
                 const rawCount = rawCounts[slot] as number | undefined;
@@ -372,7 +385,7 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                   <div key={slot} className={i !== 0 ? 'border-t border-black/5' : ''}>
                     <div
                       className={`relative flex items-center gap-3 px-3.5 py-3 ${
-                        blocked ? 'bg-brake-soft' : flagged ? 'bg-drive-soft' : ''
+                        blocked ? 'bg-brake-soft' : flagged ? 'bg-warn-soft' : ''
                       }`}
                     >
                       {/* Full-row click target for navigating to the picker --
@@ -398,7 +411,7 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                           rendered a chosen part as a bare "S…" and wrapped
                           "Choose from / 3" against the icons. */}
                       <span className="flex-1 min-w-0 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                        <span className={`flex items-center gap-1 text-xs sm:text-sm sm:w-32 sm:shrink-0 ${blocked ? 'text-brake font-medium' : flagged ? 'text-drive' : 'text-ink-muted'}`}>
+                        <span className={`flex items-center gap-1 text-xs sm:text-sm sm:w-32 sm:shrink-0 ${blocked ? 'text-brake font-medium' : flagged ? 'text-warn' : 'text-ink-muted'}`}>
                           {label}
                           {/* Plain-English "what is this part" panel -- not a
                               compatibility explainer (that's "Why?" below), just
@@ -421,6 +434,32 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                           >
                             <Info size={11} />
                           </button>
+                          {/* Warning icon -- gated on blocked/flagged, same
+                              as the row tint above, NOT on rowWarnings.length
+                              alone: a slot can appear in an info-severity
+                              note (e.g. "no rack eyelets" on the frame) with
+                              no amber/red tint at all, and this icon would
+                              otherwise show amber for a row that isn't
+                              actually warning-severity. Separate button from
+                              the info one so both can be open at once;
+                              `relative z-10` for the same reason as info's
+                              (lift above the row's full-width nav Link). The
+                              part stays fully selectable either way -- this
+                              is a disclosure, not a gate, same as everywhere
+                              else severity is shown on this page. */}
+                          {(blocked || flagged) && (
+                            <button
+                              type="button"
+                              aria-label={`Why is ${label} flagged?`}
+                              aria-expanded={Boolean(warnOpen[slot])}
+                              onClick={() => setWarnOpen((o) => ({ ...o, [slot]: !o[slot] }))}
+                              className={`relative z-10 shrink-0 rounded-full ${
+                                warnOpen[slot] ? (blocked ? 'text-brake' : 'text-warn') : blocked ? 'text-brake/60 hover:text-brake' : 'text-warn/70 hover:text-warn'
+                              }`}
+                            >
+                              <AlertTriangle size={11} />
+                            </button>
+                          )}
                         </span>
 
                         {loading ? (
@@ -515,6 +554,33 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                             ))}
                           </ul>
                         )}
+                      </div>
+                    )}
+
+                    {warnOpen[slot] && rowWarnings.length > 0 && (
+                      <div className="relative z-10 border-t border-black/5 bg-black/[0.015] px-3.5 py-2.5 pl-[3.25rem] text-xs">
+                        {/* Same SEVERITY styling/icon the aggregate #build-notes
+                            cards use below -- this is that same warning object,
+                            just surfaced at the row instead of requiring a
+                            scroll down to find it. */}
+                        <ul className="space-y-2">
+                          {rowWarnings.map((w, wi) => {
+                            const s = SEVERITY[w.severity];
+                            return (
+                              <li key={`${w.id}-${wi}`}>
+                                <div className={`font-semibold flex items-center gap-1.5 ${s.head}`}>
+                                  <s.Icon size={12} className="shrink-0" /> {w.title}
+                                </div>
+                                <div className={`mt-0.5 leading-relaxed ${s.body}`}>{w.message}</div>
+                                {w.remedy && (
+                                  <div className={`mt-1 flex items-center gap-1.5 font-medium ${s.head}`}>
+                                    <Wrench size={11} /> {w.remedy}
+                                  </div>
+                                )}
+                              </li>
+                            );
+                          })}
+                        </ul>
                       </div>
                     )}
                   </div>
