@@ -423,14 +423,20 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                               `relative z-10` lifts the button above the row's
                               absolutely-positioned nav Link, same trick "Why?"
                               already uses. `title` is kept too, as a bonus for
-                              desktop mouse users who do hover long enough. */}
+                              desktop mouse users who do hover long enough.
+                              `p-1 -m-1` pads the hit area out from the bare
+                              11px icon (too thin to land a tap on reliably)
+                              without shifting the visible layout -- the
+                              padding pushes the icon in, the matching
+                              negative margin pulls the button box back to
+                              where it was. */}
                           <button
                             type="button"
                             title={CATEGORY_BY_SLUG[slug]?.description}
                             aria-label={`What is ${label}?`}
                             aria-expanded={Boolean(infoOpen[slot])}
                             onClick={() => setInfoOpen((o) => ({ ...o, [slot]: !o[slot] }))}
-                            className={`relative z-10 shrink-0 rounded-full ${infoOpen[slot] ? 'text-contact' : 'text-ink-muted/40 hover:text-ink-muted'}`}
+                            className={`relative z-10 shrink-0 rounded-full p-1 -m-1 ${infoOpen[slot] ? 'text-contact' : 'text-ink-muted/40 hover:text-ink-muted'}`}
                           >
                             <Info size={11} />
                           </button>
@@ -453,7 +459,7 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                               aria-label={`Why is ${label} flagged?`}
                               aria-expanded={Boolean(warnOpen[slot])}
                               onClick={() => setWarnOpen((o) => ({ ...o, [slot]: !o[slot] }))}
-                              className={`relative z-10 shrink-0 rounded-full ${
+                              className={`relative z-10 shrink-0 rounded-full p-1 -m-1 ${
                                 warnOpen[slot] ? (blocked ? 'text-brake' : 'text-warn') : blocked ? 'text-brake/60 hover:text-brake' : 'text-warn/70 hover:text-warn'
                               }`}
                             >
