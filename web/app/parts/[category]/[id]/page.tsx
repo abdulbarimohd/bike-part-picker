@@ -21,7 +21,7 @@ import { splitDisplayName } from '../../../../lib/display-name';
 import { compatibilityApi, PartCompatibility } from '../../../../lib/compatibility-client';
 
 // Matches `chassis`/`wheel`/`drive` in tailwind.config.ts.
-const CHART_COLORS = ['#b45309', '#059669', '#ea580c'];
+const CHART_COLORS = ['#A18800', '#059669', '#ea580c'];
 
 // ------------------------------------------------------------
 // Frame spec grouping (audit 05.1). Frames show ~28 spec tiles; flat,

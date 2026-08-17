@@ -61,7 +61,7 @@ function sectionise(filters: FilterConfig[]): { group?: string; items: FilterCon
 }
 
 // Matches `chassis` in tailwind.config.ts, the default accent.
-export default function FilterSidebar({ filters, accent = '#b45309' }: FilterSidebarProps) {
+export default function FilterSidebar({ filters, accent = '#A18800' }: FilterSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Collapsed by default on mobile -- on a narrow screen a permanently-

@@ -338,7 +338,7 @@ export type GroupKey = 'chassis' | 'drive' | 'wheel' | 'brake' | 'cockpit' | 'co
 export const GROUPS: Record<GroupKey, { label: string; accent: string; soft: string; slugs: string[] }> = {
   chassis: {
     // Kept in sync with tailwind.config.ts's `chassis` colour by hand.
-    label: 'Frame & Suspension', accent: '#786600', soft: '#f1f5f9',
+    label: 'Frame & Suspension', accent: '#A18800', soft: '#f1f5f9',
     slugs: ['frames', 'forks', 'headsets', 'rear-shocks'],
   },
   drive: {

@@ -35,7 +35,17 @@ const config: Config = {
         // still tells the two subsystems apart. (A dark-charcoal version of
         // this was tried and reverted -- scoped to the header nav bar only,
         // see layout.tsx, not the category badge system.)
-        chassis: { DEFAULT: '#b45309', soft: '#f1f5f9', ring: '#e2e8f0' }, // gold text, silver ribbon
+        // DEFAULT retuned from amber-700 (#b45309, hue 26° -- read as
+        // rust/terracotta) toward true yellow-gold, hue 51°, zero blue.
+        // An AA-small-text-safe first pass (#786600) read as dark
+        // olive/"poo" rather than gold -- yellow only reads as yellow at
+        // real brightness, so #A18800 trades some contrast margin for
+        // that (3.48:1 on white: comfortably clears the 3.0 large-text AA
+        // floor -- the hero H1 and badge/chip usages -- but sits under
+        // 4.5 for the smallest body-size links, e.g. the legal-page TOC).
+        // Deliberate tradeoff, not an oversight. Kept clear of `warn`'s
+        // yellow (below): warn-text sits at hue 32°, chassis stays past it.
+        chassis: { DEFAULT: '#A18800', soft: '#f1f5f9', ring: '#e2e8f0' }, // gold text, silver ribbon
         // `text` variants below are darkened versions of DEFAULT, used only
         // where the colour carries real reading text (the compatibility
         // warning boxes) rather than a badge/icon accent -- DEFAULT reads
