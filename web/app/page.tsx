@@ -91,9 +91,19 @@ export default function HomePage() {
     <div className="max-w-[1400px] mx-auto px-6">
       {/* Hero */}
       <section className="pt-14 pb-12">
-        <span className="chip bg-chassis-soft text-chassis ring-1 ring-chassis-ring mb-4">
+        {/* bg-ink (not the light chassis-soft the rest of the chips use)
+            to match the header exactly — this is the one homepage element
+            that's actually a doorway into the site (the 103-rule
+            reference), so it reads as a distinct, clickable control rather
+            than a decorative stat. text-white for AA contrast on ink
+            (chassis-gold text only manages 3.67:1 there). */}
+        <Link
+          href="/compatibility/rules"
+          className="chip bg-ink text-white ring-1 ring-white/15 hover:bg-ink-soft transition-colors mb-4"
+        >
           27 categories · 103 compatibility rules
-        </span>
+          <ArrowRight size={12} className="text-white/50" />
+        </Link>
         <h1 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-ink max-w-5xl leading-[1.05]">
           Build a bike that
           <span className="text-chassis"> actually bolts together</span>.

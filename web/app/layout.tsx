@@ -143,7 +143,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 links={[
                   { href: '/builder', label: 'Start a build' },
                   { href: '/my-bike', label: 'I already own a bike' },
-                  { href: '/compatibility', label: 'Compatibility rules' },
                 ]}
               />
               <FooterLinkGroup
