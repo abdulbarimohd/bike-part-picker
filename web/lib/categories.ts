@@ -361,7 +361,7 @@ export const GROUPS: Record<GroupKey, { label: string; accent: string; soft: str
     // Kept in sync with the `contact` colour in tailwind.config.ts by hand
     // -- this file can't import Tailwind's resolved theme, so the two hex
     // values are duplicated deliberately rather than computed.
-    label: 'Contact Points', accent: '#C8461E', soft: '#f1f5f9',
+    label: 'Contact Points', accent: '#A18800', soft: '#f1f5f9',
     slugs: ['pedals', 'shoes'],
   },
   misc: {
