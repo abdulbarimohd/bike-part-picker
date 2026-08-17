@@ -17,7 +17,7 @@ import {
   AlertTriangle, ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Info, Loader2, LogIn, RotateCcw, Wrench,
 } from 'lucide-react';
 import { api, CompatibilityWarning } from '../../../lib/api-client';
-import { BUILDER_SLOTS, GROUPS, GroupKey, GROUP_OF } from '../../../lib/categories';
+import { BUILDER_SLOTS, CATEGORY_BY_SLUG, GROUPS, GroupKey, GROUP_OF } from '../../../lib/categories';
 import { splitDisplayName } from '../../../lib/display-name';
 import { formatGbp } from '../../../lib/money';
 import PartIcon from '../../../components/PartIcon';
@@ -401,8 +401,20 @@ export default function UpgradePage() {
                         <PartIcon slug={slug} className="w-[18px] h-[18px]" />
                       </span>
                       <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                        <span className={`text-sm sm:w-32 shrink-0 ${blocked ? 'text-brake-text font-medium' : 'text-ink-muted'}`}>
+                        <span className={`flex items-center gap-1 text-sm sm:w-32 shrink-0 ${blocked ? 'text-brake-text font-medium' : 'text-ink-muted'}`}>
                           {label}
+                          {/* Plain-English "what is this part" tooltip, same
+                              as the scratch builder -- useful here too since
+                              a stock bike's owner didn't necessarily pick any
+                              of these parts themselves. */}
+                          <button
+                            type="button"
+                            title={CATEGORY_BY_SLUG[slug]?.description}
+                            aria-label={`What is ${label}?`}
+                            className="shrink-0 text-ink-muted/40 hover:text-ink-muted"
+                          >
+                            <Info size={11} />
+                          </button>
                           {notFitted && <span className="block text-[10px] text-ink-muted/60">not fitted</span>}
                         </span>
 

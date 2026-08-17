@@ -16,7 +16,7 @@ import Link from 'next/link';
 import { AlertTriangle, CheckCircle2, ChevronRight, Info, Loader2, Wrench, User } from 'lucide-react';
 import { api, CompatibilityWarning } from '../lib/api-client';
 import { formatGbp } from '../lib/money';
-import { BUILDER_SLOTS, GROUPS, GroupKey, GROUP_OF } from '../lib/categories';
+import { BUILDER_SLOTS, CATEGORY_BY_SLUG, GROUPS, GroupKey, GROUP_OF } from '../lib/categories';
 import PartIcon from './PartIcon';
 import { useDiscipline } from './DisciplineProvider';
 import DisciplineSwitch from './DisciplineSwitch';
@@ -395,8 +395,22 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                           rendered a chosen part as a bare "S…" and wrapped
                           "Choose from / 3" against the icons. */}
                       <span className="flex-1 min-w-0 flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                        <span className={`text-xs sm:text-sm sm:w-32 sm:shrink-0 ${blocked ? 'text-brake font-medium' : flagged ? 'text-drive' : 'text-ink-muted'}`}>
+                        <span className={`flex items-center gap-1 text-xs sm:text-sm sm:w-32 sm:shrink-0 ${blocked ? 'text-brake font-medium' : flagged ? 'text-drive' : 'text-ink-muted'}`}>
                           {label}
+                          {/* Plain-English "what is this part" tooltip -- not a
+                              compatibility explainer (that's "Why?" below), just
+                              what the category means, for anyone building their
+                              first bike from a parts list. `relative z-10` lifts
+                              it above the row's absolutely-positioned nav Link,
+                              same trick "Why?" already uses. */}
+                          <button
+                            type="button"
+                            title={CATEGORY_BY_SLUG[slug]?.description}
+                            aria-label={`What is ${label}?`}
+                            className="relative z-10 shrink-0 text-ink-muted/40 hover:text-ink-muted"
+                          >
+                            <Info size={11} />
+                          </button>
                         </span>
 
                         {loading ? (
