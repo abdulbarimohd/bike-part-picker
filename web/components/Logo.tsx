@@ -9,7 +9,7 @@
 // `#goldPlate` and one would silently render unfilled.
 export default function Logo({ className }: { className?: string }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" className={className} role="img" aria-label="Bike PartPicker logo">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" className={className} role="img" aria-label="Build My Bike logo">
       <defs>
         <linearGradient id="bpp-logo-gold" x1="0" y1="0" x2="0" y2="1">
           <stop offset="0" stopColor="#F0D28A" />

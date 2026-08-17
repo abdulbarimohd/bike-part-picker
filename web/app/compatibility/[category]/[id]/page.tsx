@@ -87,7 +87,7 @@ export default function WhatFitsPage() {
       </h1>
       <p className="text-sm text-ink-muted mb-8 max-w-2xl">
         Computed live from the compatibility engine's real rules against every part currently in
-        the Bike PartPicker catalogue — see the <Link href="/compatibility/rules" className="text-chassis hover:underline">rule reference</Link>.
+        the Build My Bike catalogue — see the <Link href="/compatibility/rules" className="text-chassis hover:underline">rule reference</Link>.
         Not a marketing claim: where the catalogue doesn't have enough of a category yet, or the
         engine needs a third part it doesn't have in this context, that's shown honestly rather
         than guessed.

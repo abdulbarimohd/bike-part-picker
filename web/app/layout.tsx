@@ -13,7 +13,7 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'sw
 const display = Space_Grotesk({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'Bike PartPicker',
+  title: 'Build My Bike',
   description: 'A compatibility-checked build tool for mountain bikes.',
 };
 
@@ -58,13 +58,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-[1400px] mx-auto px-6 h-14 flex items-center justify-between gap-6">
             <Link href="/" className="flex items-center gap-2 font-display text-base font-extrabold uppercase tracking-normal text-white shrink-0">
               <Logo className="h-6 w-6 shrink-0" />
-              {/* "Bike" and the "PartPicker" span must share ONE flex child
+              {/* "Build" and the "MyBike" span must share ONE flex child
                   (this inner span) -- as direct siblings of the outer
                   `flex gap-1.5` Link, that gap utility inserted space
                   between every flex child, including between the two
                   words, which is not what "gap" was meant to control here. */}
               <span>
-                Bike<span className="bg-gradient-to-br from-slate-100 to-slate-400 bg-clip-text text-transparent">PartPicker</span>
+                Build<span className="bg-gradient-to-br from-slate-100 to-slate-400 bg-clip-text text-transparent">MyBike</span>
               </span>
             </Link>
 
@@ -121,7 +121,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="max-w-[1400px] mx-auto px-6 pt-8 sm:pt-10 pb-8">
             <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-[minmax(0,1.6fr)_repeat(3,minmax(0,1fr))] gap-x-6 sm:gap-x-8 gap-y-6 sm:gap-y-8">
               {/* Brand: same mark + wordmark structure as the header --
-                  the "PartPicker" gradient just steps from slate-100/400
+                  the "MyBike" gradient just steps from slate-100/400
                   (for the dark bar) to slate-500/800 so it still reads
                   as a two-tone wordmark on this light surface. */}
               <div className="col-span-2 sm:col-span-4 lg:col-span-1">
@@ -130,7 +130,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/" className="inline-flex items-center gap-2 py-2.5 -my-2.5 font-display text-base font-extrabold uppercase tracking-normal text-ink">
                   <Logo className="h-6 w-6 shrink-0" />
                   <span>
-                    Bike<span className="bg-gradient-to-br from-slate-500 to-slate-800 bg-clip-text text-transparent">PartPicker</span>
+                    Build<span className="bg-gradient-to-br from-slate-500 to-slate-800 bg-clip-text text-transparent">MyBike</span>
                   </span>
                 </Link>
                 <p className="mt-3 text-sm text-ink-muted leading-relaxed max-w-xs">
@@ -162,7 +162,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
 
             <div className="mt-8 pt-5 border-t border-black/5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs text-ink-muted">
-              <p>&copy; 2026 Bike PartPicker</p>
+              <p>&copy; 2026 Build My Bike</p>
               <p>Compatibility data is curated seed data, not a live price feed.</p>
             </div>
           </div>

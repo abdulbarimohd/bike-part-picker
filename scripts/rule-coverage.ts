@@ -8,7 +8,9 @@
 // This measures the difference.
 //
 // Run: docker run --rm --network bike-partpicker_default \
-//        -e DATABASE_URL=... bike-partpicker-seed npx tsx scripts/rule-coverage.ts
+//        -e DATABASE_URL=... build-my-bike-seed npx tsx scripts/rule-coverage.ts
+// (the --network name is derived from this project's folder name on disk,
+// still `bike-partpicker`, not the app's brand name -- see README.md)
 
 import { PrismaClient } from '@prisma/client';
 import { getCompatibilityWarnings } from '../src/compatibility/engine';

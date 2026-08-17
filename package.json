@@ -1,8 +1,8 @@
 {
-  "name": "bike-partpicker-api",
+  "name": "build-my-bike-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Bike PartPicker API — Express + Prisma + PostgreSQL",
+  "description": "Build My Bike API — Express + Prisma + PostgreSQL",
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "tsx watch src/index.ts",

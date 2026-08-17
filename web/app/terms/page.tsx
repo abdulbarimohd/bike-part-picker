@@ -4,8 +4,8 @@ import { Mail } from 'lucide-react';
 import LegalToc from '../../components/LegalToc';
 
 export const metadata = {
-  title: 'Terms of Service — Bike PartPicker',
-  description: 'The terms for using Bike PartPicker.',
+  title: 'Terms of Service — Build My Bike',
+  description: 'The terms for using Build My Bike.',
 };
 
 // Same treatment as privacy/page.tsx (02.2): 20px display H2 over 14px
@@ -35,7 +35,7 @@ export default function TermsPage() {
 
       <section className="mb-8">
         <p className={P}>
-          By using Bike PartPicker, you agree to these terms. If you don't agree, please don't use
+          By using Build My Bike, you agree to these terms. If you don't agree, please don't use
           the site. We've tried to keep this readable rather than exhaustive — if something's
           unclear, ask us.
         </p>
@@ -54,7 +54,7 @@ export default function TermsPage() {
       <section id="what" className={SECTION}>
         <h2 className={H2}>What this is</h2>
         <p className={P}>
-          Bike PartPicker is a compatibility-checking tool for bike parts. It is not a retailer:
+          Build My Bike is a compatibility-checking tool for bike parts. It is not a retailer:
           we don't sell parts, process payments, or hold stock. Where the site links to a retailer,
           any purchase is a transaction between you and that retailer, governed by their own terms —
           not ours.

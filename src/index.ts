@@ -52,5 +52,5 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
 const PORT = process.env.PORT ?? 4000;
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
-  console.log(`Bike PartPicker API listening on :${PORT}`);
+  console.log(`Build My Bike API listening on :${PORT}`);
 });

@@ -13,11 +13,11 @@ import Link from 'next/link';
 import { Mail, FileSearch, ShieldCheck, Tag, Link2 } from 'lucide-react';
 
 export const metadata = {
-  title: 'Contact — Bike PartPicker',
-  description: 'Get in touch with the Bike PartPicker team.',
+  title: 'Contact — Build My Bike',
+  description: 'Get in touch with the Build My Bike team.',
 };
 
-const CONTACT_EMAIL = 'hello@bikepartpicker.co.uk';
+const CONTACT_EMAIL = 'hello@buildmybike.co.uk';
 
 // Mirrors the provenance system (components/ProvenanceBadge.tsx): a
 // spec is one field on one part, backed by a manufacturer source URL.

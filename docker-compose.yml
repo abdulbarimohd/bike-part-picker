@@ -1,4 +1,4 @@
-# docker-compose.yml — Bike PartPicker full stack
+# docker-compose.yml — Build My Bike full stack
 #
 # Everything:            docker compose up --build
 # Database only (for     docker compose up -d db

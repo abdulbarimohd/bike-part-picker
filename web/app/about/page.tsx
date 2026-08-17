@@ -5,8 +5,8 @@ import PartIcon from '../../components/PartIcon';
 import { ProvenanceChip } from '../../components/ProvenanceBadge';
 
 export const metadata = {
-  title: 'About — Bike PartPicker',
-  description: 'Why Bike PartPicker exists and how the compatibility engine works.',
+  title: 'About — Build My Bike',
+  description: 'Why Build My Bike exists and how the compatibility engine works.',
 };
 
 // The page's one visual (01.4): a "spec sheet" card assembled from the
@@ -33,9 +33,9 @@ const EYEBROW = 'text-xs text-ink-muted uppercase tracking-wide font-semibold';
 export default function AboutPage() {
   return (
     <div className="max-w-3xl mx-auto px-6 py-12">
-      <h1 className="font-display text-3xl font-bold text-ink mb-4">About Bike PartPicker</h1>
+      <h1 className="font-display text-3xl font-bold text-ink mb-4">About Build My Bike</h1>
       <p className="text-ink-muted leading-relaxed mb-8">
-        Bike PartPicker is a compatibility-checked build tool for bikes, built in the UK. Pick a
+        Build My Bike is a compatibility-checked build tool for bikes, built in the UK. Pick a
         frame and every other part list narrows to what genuinely fits it — no guessing whether a
         148mm rear axle, a 92mm bottom bracket, or a UDH derailleur hanger actually works with the
         rest of your build.
@@ -112,7 +112,7 @@ export default function AboutPage() {
 
       <h2 className={H2}>Where things stand</h2>
       <p className="text-sm text-ink-muted leading-relaxed mb-4">
-        Bike PartPicker is an early, actively-developed project, built and maintained by a small UK
+        Build My Bike is an early, actively-developed project, built and maintained by a small UK
         team. The compatibility engine and the core build tool are solid and fully tested. The
         parts catalogue is still growing — real manufacturer data exists for a growing share of
         categories, and we'd rather show an honest gap than an invented spec or price. If something

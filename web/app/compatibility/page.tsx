@@ -35,7 +35,7 @@ export default function CompatibilityHubPage() {
     <div className="max-w-5xl mx-auto px-6 py-8">
       <h1 className="font-display text-2xl sm:text-3xl font-bold text-ink leading-tight mb-2">Compatibility</h1>
       <p className="text-sm text-ink-muted max-w-2xl mb-8">
-        Bike PartPicker's compatibility engine implements 103 rules covering every part-to-part
+        Build My Bike's compatibility engine implements 103 rules covering every part-to-part
         constraint on a modern bike. This section makes that reasoning browsable on its own —
         a rule-by-rule reference, and a "what fits this?" breakdown for any part in the catalogue,
         both computed live from the same engine that gates the builder.

@@ -1,5 +1,5 @@
 {
-  "name": "bike-partpicker-web",
+  "name": "build-my-bike-web",
   "private": true,
   "scripts": {
     "dev": "next dev",

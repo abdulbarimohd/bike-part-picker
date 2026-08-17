@@ -4,8 +4,8 @@ import { Check } from 'lucide-react';
 import LegalToc from '../../components/LegalToc';
 
 export const metadata = {
-  title: 'Privacy Policy — Bike PartPicker',
-  description: 'What data Bike PartPicker collects, why, and how to control it.',
+  title: 'Privacy Policy — Build My Bike',
+  description: 'What data Build My Bike collects, why, and how to control it.',
 };
 
 // Shared with terms/page.tsx by convention (02.2): 20px display H2 over
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
 
       <section className="mb-8">
         <p className={P}>
-          This policy covers Bike PartPicker (bikepartpicker.co.uk and its subdomains). We keep
+          This policy covers Build My Bike (buildmybike.co.uk and its subdomains). We keep
           this short and specific to what the site actually does — no boilerplate about data
           practices we don't follow.
         </p>
@@ -85,7 +85,7 @@ export default function PrivacyPage() {
         </p>
         <p className={P}>
           We don't collect anything beyond this. No payment details are collected or stored by
-          us — Bike PartPicker doesn't process payments; any purchase happens on the retailer's own
+          us — Build My Bike doesn't process payments; any purchase happens on the retailer's own
           site.
         </p>
       </section>

@@ -1,10 +1,13 @@
 # Paste this as your first message on the new account
 
-I'm continuing work on **Bike PartPicker** — a self-hosted, UK-market,
-PCPartPicker-style build tool for bikes, eventually affiliate-marketed. Full
-history is in `SESSION_LOG.md` in the project root
-(`C:\Users\abdul\Documents\bike-partpicker\`) — **read that file first**,
-it covers everything from the original build through today in detail.
+I'm continuing work on **Build My Bike** (formerly "Bike PartPicker" —
+renamed 2026-08-16, see SESSION_LOG.md's last entry for why) — a
+self-hosted, UK-market, PCPartPicker-style build tool for bikes,
+eventually affiliate-marketed. Full history is in `SESSION_LOG.md` in the
+project root (`C:\Users\abdul\Documents\bike-partpicker\` — the folder on
+disk kept its original name, only the product's own branding changed) —
+**read that file first**, it covers everything from the original build
+through today in detail.
 
 Quick orientation before you read it:
 

@@ -1,4 +1,4 @@
-# Bike PartPicker
+# Build My Bike
 
 A PCPartPicker-style build tool for mountain bikes: pick a frame, fork,
 drivetrain and wheels, and incompatible parts are filtered out of the
@@ -40,12 +40,17 @@ stage, not the runtime image — `tsx` is a devDependency, so it's
 deliberately absent from the lean production image:
 
 ```bash
-docker build --target build -t bike-partpicker-seed .
+docker build --target build -t build-my-bike-seed .
 ```
 
 ```bash
-docker run --rm --network bike-partpicker_default --env-file .env -e DATABASE_URL="postgresql://bikepp:$POSTGRES_PASSWORD@db:5432/bikepp" bike-partpicker-seed npx tsx prisma/seed.ts
+docker run --rm --network bike-partpicker_default --env-file .env -e DATABASE_URL="postgresql://bikepp:$POSTGRES_PASSWORD@db:5432/bikepp" build-my-bike-seed npx tsx prisma/seed.ts
 ```
+
+<!-- The `--network bike-partpicker_default` above is intentionally left
+     as-is: Docker Compose derives it from this project's folder name on
+     disk (still `bike-partpicker`), not from the app's brand name. If
+     you ever rename the folder too, update this to match. -->
 
 ## Running everything
 

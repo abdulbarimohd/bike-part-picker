@@ -1,4 +1,4 @@
-# web/Dockerfile — Bike PartPicker frontend (Next.js App Router)
+# web/Dockerfile — Build My Bike frontend (Next.js App Router)
 
 FROM node:20-bookworm-slim AS base
 WORKDIR /app

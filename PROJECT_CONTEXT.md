@@ -1,4 +1,4 @@
-# Bike PartPicker — Project Context
+# Build My Bike — Project Context
 
 Handoff summary for continuing this project in Claude Code. Written from a
 claude.ai chat conversation where the architecture, engine, API, and a

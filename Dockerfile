@@ -1,4 +1,4 @@
-# Dockerfile — Bike PartPicker API (Express + Prisma)
+# Dockerfile — Build My Bike API (Express + Prisma)
 #
 # Debian slim rather than Alpine on purpose: `bcrypt` is a native
 # module with prebuilt binaries for glibc but not musl, and Prisma
