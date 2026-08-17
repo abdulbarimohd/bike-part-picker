@@ -126,7 +126,7 @@ export default function MyBikePage() {
               disabled={cloning !== null}
               className="text-left accent-tile shadow-card flex items-center gap-4 disabled:opacity-60"
               // Matches the `contact` colour in tailwind.config.ts.
-              style={{ ['--accent' as string]: '#78350f' }}
+              style={{ ['--accent' as string]: '#C8461E' }}
             >
               <div className="w-11 h-11 rounded-lg flex items-center justify-center shrink-0 bg-contact-soft text-contact">
                 <Bike size={22} />

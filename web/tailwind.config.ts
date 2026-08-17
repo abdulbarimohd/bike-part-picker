@@ -68,7 +68,15 @@ const config: Config = {
         // My Bike) so the "what you see here is what you get there"
         // promise on the homepage holds.
         warn: { DEFAULT: '#eab308', soft: '#fefce8', ring: '#fef08a', text: '#854d0e' },
-        contact: { DEFAULT: '#78350f', soft: '#f1f5f9', ring: '#e2e8f0' }, // brown text, silver ribbon
+        // Retuned alongside chassis (above) for the same reason: #78350f
+        // (hue 22°) read as dark, muddy rust/brown, same complaint as the
+        // old chassis colour. #C8461E is a bright, warm copper-red (hue
+        // 14°) -- clearly brighter and richer, still 4.83:1 on white (this
+        // one clears even small-text AA, since red hues don't need the
+        // same brightness-vs-contrast tradeoff yellow does), and stays
+        // readably distinct from both drive-orange (20°) and brake-rose
+        // (347°) either side of it, and from the new chassis-gold (51°).
+        contact: { DEFAULT: '#C8461E', soft: '#f1f5f9', ring: '#e2e8f0' }, // copper text, silver ribbon
         misc: { DEFAULT: '#475569', soft: '#f8fafc', ring: '#cbd5e1' },
       },
       boxShadow: {
