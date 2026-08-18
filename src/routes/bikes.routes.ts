@@ -23,23 +23,34 @@ const MODEL_PARTS_INCLUDE = {
 router.get('/', async (req, res) => {
   const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const take = Math.min(Number(req.query.limit) || 25, 50);
+  const skip = Math.max(Number(req.query.offset) || 0, 0);
 
-  const bikes = await prisma.bikeModel.findMany({
-    where: q
-      ? {
-          OR: [
-            { brand: { contains: q, mode: 'insensitive' } },
-            { model: { contains: q, mode: 'insensitive' } },
-            { variant: { contains: q, mode: 'insensitive' } },
-          ],
-        }
-      : undefined,
-    orderBy: [{ brand: 'asc' }, { model: 'asc' }, { year: 'desc' }],
-    take,
-    include: { _count: { select: { parts: true } } },
-  });
+  const where = q
+    ? {
+        OR: [
+          { brand: { contains: q, mode: 'insensitive' as const } },
+          { model: { contains: q, mode: 'insensitive' as const } },
+          { variant: { contains: q, mode: 'insensitive' as const } },
+        ],
+      }
+    : undefined;
 
-  res.json(bikes);
+  // Alphabetical order means an unfiltered browse used to silently
+  // truncate after the first `take` rows (Cannondale alone fills 25,
+  // hiding every Canyon/Trek bike) with no way for the client to know
+  // more existed -- `total` lets the frontend offer "load more" instead.
+  const [bikes, total] = await Promise.all([
+    prisma.bikeModel.findMany({
+      where,
+      orderBy: [{ brand: 'asc' }, { model: 'asc' }, { year: 'desc' }],
+      take,
+      skip,
+      include: { _count: { select: { parts: true } } },
+    }),
+    prisma.bikeModel.count({ where }),
+  ]);
+
+  res.json({ items: bikes, total });
 });
 
 // ------------------------------------------------------------

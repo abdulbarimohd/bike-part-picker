@@ -26,25 +26,49 @@ function stripRedundantYear(text: string | null | undefined, year: number): stri
   return t.replace(new RegExp(`\\s+${year}$`), '');
 }
 
+const PAGE_SIZE = 30;
+
 export default function MyBikePage() {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [bikes, setBikes] = useState<BikeModel[]>([]);
+  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [cloning, setCloning] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Debounced so typing doesn't fire a request per keystroke.
+  // Debounced so typing doesn't fire a request per keystroke. A search
+  // always restarts from the top -- the catalogue used to hard-cap at
+  // the first 25 results (alphabetically) with no way to reach anything
+  // past Cannondale, so this now paginates instead of truncating.
   useEffect(() => {
     const t = setTimeout(() => {
       setLoading(true);
-      api.searchBikes(query || undefined)
-        .then(setBikes)
-        .catch(() => setBikes([]))
+      api.searchBikes(query || undefined, 0, PAGE_SIZE)
+        .then(({ items, total }) => {
+          setBikes(items);
+          setTotal(total);
+        })
+        .catch(() => {
+          setBikes([]);
+          setTotal(0);
+        })
         .finally(() => setLoading(false));
     }, 200);
     return () => clearTimeout(t);
   }, [query]);
+
+  function loadMore() {
+    setLoadingMore(true);
+    api.searchBikes(query || undefined, bikes.length, PAGE_SIZE)
+      .then(({ items, total }) => {
+        setBikes((prev) => [...prev, ...items]);
+        setTotal(total);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingMore(false));
+  }
 
   async function choose(bike: BikeModel) {
     // Login is optional, not a gate: /bikes/:slug/clone works logged
@@ -149,6 +173,19 @@ export default function MyBikePage() {
             </button>
             );
           })}
+        </div>
+      )}
+
+      {!loading && bikes.length < total && (
+        <div className="flex justify-center mt-6">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="text-sm font-medium text-contact border border-contact/30 rounded-lg px-5 py-2.5 hover:bg-contact-soft transition-colors disabled:opacity-60 inline-flex items-center gap-2"
+          >
+            {loadingMore && <Loader2 size={15} className="animate-spin" />}
+            Load more ({bikes.length} of {total})
+          </button>
         </div>
       )}
 

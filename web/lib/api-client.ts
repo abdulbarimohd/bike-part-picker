@@ -99,7 +99,10 @@ export const api = {
 
   // Factory bikes. Cloning one produces an ordinary Build, so every
   // existing build/lockout endpoint works on it unchanged.
-  searchBikes: (q?: string) => request<BikeModel[]>(`/bikes${toQuery({ q })}`),
+  searchBikes: (q?: string, offset?: number, limit?: number) =>
+    request<{ items: BikeModel[]; total: number }>(
+      `/bikes${toQuery({ q, offset: offset ? String(offset) : undefined, limit: limit ? String(limit) : undefined })}`
+    ),
   getBike: (slug: string) => request<BikeModel>(`/bikes/${slug}`),
   cloneBike: (slug: string, name?: string) =>
     request<any>(`/bikes/${slug}/clone`, { method: 'POST', body: JSON.stringify({ name }) }),
