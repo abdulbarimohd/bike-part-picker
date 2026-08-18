@@ -9,6 +9,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { Search, Loader2, ArrowRight, Bike } from 'lucide-react';
 import { api, clearToken, BikeModel } from '../../lib/api-client';
 import { formatGbpWhole } from '../../lib/money';
@@ -190,10 +191,13 @@ export default function MyBikePage() {
       )}
 
       <p className="text-xs text-ink-muted mt-8 max-w-2xl">
-        Can&apos;t find your bike? The catalogue is still growing. Most gravel bikes here
-        (Canyon Grizl, Cannondale Topstone/Synapse, Trek Checkpoint) have a verified factory
-        frame but not yet a full stock build — pick one to start from the right frame, then
-        fill in the rest yourself. A handful of mountain bikes have complete demo builds.
+        Can&apos;t find your bike? The catalogue currently covers a handful of mountain bikes
+        with a complete, verified stock build — more are being added. If yours isn&apos;t
+        listed yet,{' '}
+        <Link href="/builder" className="text-chassis hover:underline">
+          start from scratch in the Builder
+        </Link>{' '}
+        instead and pick your parts one by one.
       </p>
     </div>
   );
