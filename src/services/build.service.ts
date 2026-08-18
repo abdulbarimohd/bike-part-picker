@@ -85,18 +85,43 @@ const INCLUDE_ALL_DETAILS = Object.fromEntries(
   Object.values(DETAIL_RELATION).map((relation) => [relation, true])
 ) as Record<string, true>;
 
-export async function loadBuildFromDb(buildId: string): Promise<BikeBuild> {
-  const [buildRow, buildParts] = await Promise.all([
-    prisma.build.findUnique({ where: { id: buildId } }),
-    prisma.buildPart.findMany({
-      where: { buildId },
-      include: { part: { include: INCLUDE_ALL_DETAILS } },
-      orderBy: { addedAt: 'asc' },
-    }),
-  ]);
+/** Minimal shape `shapeBuildParts` needs from each row -- deliberately
+ *  narrower than Prisma's generated type so it can be called with plain
+ *  test fixtures, no database involved. */
+export interface RawBuildPart {
+  slot: string | null;
+  part: { type: PartType; brand: string; name: string } & Record<string, any>;
+}
 
+/**
+ * Reshapes a list of BuildPart rows (with their Part + detail relation
+ * already loaded) into the flat BikeBuild slot object the compatibility
+ * engine consumes. Pure and DB-free, so it's unit-testable on its own --
+ * see build.service.test.ts, in particular for the shifter left/right
+ * resolution below.
+ *
+ * Paired parts (tyres, tubes, rotors) use BuildPart.slot to say which end
+ * they're on. Insertion order is only a fallback for rows written before
+ * slots existed: first in = front.
+ */
+export function shapeBuildParts(buildParts: RawBuildPart[]): BikeBuild {
   const build: BikeBuild = {};
   const pairedSeen: Partial<Record<string, number>> = {};
+
+  // Mechanical drop-bar 2x shifter pairs store a different meaning of
+  // `speeds` per side -- the left lever's is the front chainring count
+  // (a fixed "2", by catalog-wide convention), the right/rear lever's is
+  // the real cassette speed count every drivetrain rule (R-DRV-02/10,
+  // R-FD-04) actually needs. `shifter` is a single BikeBuild slot, so
+  // when both sides are present the right lever must win regardless of
+  // insertion order -- otherwise whichever side was added to the build
+  // last silently decides whether those rules see a real speed count or
+  // "2", producing false criticals on a correctly-specced build.
+  // Existing catalog rows use both 'right' and 'rear' for this side
+  // (inconsistent across import passes -- checked directly against the
+  // data rather than assumed), so both are treated as the winning slot.
+  const RIGHT_SHIFTER_SLOTS = new Set(['right', 'rear']);
+  let shifterSlot: string | null = null;
 
   for (const bp of buildParts) {
     const part = bp.part as any;
@@ -120,9 +145,31 @@ export async function loadBuildFromDb(buildId: string): Promise<BikeBuild> {
       continue;
     }
 
+    if (part.type === PartType.SHIFTER) {
+      if (shifterSlot && RIGHT_SHIFTER_SLOTS.has(shifterSlot)) continue; // already locked onto the right lever
+      shifterSlot = bp.slot ?? null;
+      build.shifter = shaped;
+      continue;
+    }
+
     const single = SINGLE[part.type as PartType];
     if (single) (build as any)[single] = shaped;
   }
+
+  return build;
+}
+
+export async function loadBuildFromDb(buildId: string): Promise<BikeBuild> {
+  const [buildRow, buildParts] = await Promise.all([
+    prisma.build.findUnique({ where: { id: buildId } }),
+    prisma.buildPart.findMany({
+      where: { buildId },
+      include: { part: { include: INCLUDE_ALL_DETAILS } },
+      orderBy: { addedAt: 'asc' },
+    }),
+  ]);
+
+  const build = shapeBuildParts(buildParts as RawBuildPart[]);
 
   if (buildRow) {
     build.rider = {
