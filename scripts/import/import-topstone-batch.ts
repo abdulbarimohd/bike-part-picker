@@ -431,8 +431,8 @@ const RESOLVED_LINKS: ResolvedLink[] = [
 
   // --- Topstone 2 GRX-2x / EQ ---
   { type: PartType.CHAIN, brand: 'Shimano', name: 'CN-HG54 SHIMANO', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025' }, { slug: 'cannondale-topstone-eq-2025' }] },
-  { type: PartType.SHIFTER, brand: 'Shimano', name: 'ST-RX400-L GRX', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025' }, { slug: 'cannondale-topstone-eq-2025' }] },
-  { type: PartType.SHIFTER, brand: 'Shimano', name: 'ST-RX400-R GRX', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025' }, { slug: 'cannondale-topstone-eq-2025' }] },
+  { type: PartType.SHIFTER, brand: 'Shimano', name: 'ST-RX400-L GRX', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025', slot: 'left' }, { slug: 'cannondale-topstone-eq-2025', slot: 'left' }] },
+  { type: PartType.SHIFTER, brand: 'Shimano', name: 'ST-RX400-R GRX', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025', slot: 'right' }, { slug: 'cannondale-topstone-eq-2025', slot: 'right' }] },
   { type: PartType.REAR_DERAILLEUR, brand: 'Shimano', name: 'RD-RX400 GRX', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025' }, { slug: 'cannondale-topstone-eq-2025' }] },
   { type: PartType.BRAKE_CALIPER, brand: 'Shimano', name: 'BR-RX410-F GRX', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025' }, { slug: 'cannondale-topstone-eq-2025' }] },
   { type: PartType.BRAKE_CALIPER, brand: 'Shimano', name: 'BR-RX410-R GRX', bikes: [{ slug: 'cannondale-topstone-2-grx-2x-2025' }, { slug: 'cannondale-topstone-eq-2025' }] },
