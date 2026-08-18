@@ -206,6 +206,22 @@ router.delete('/:id/parts/:partId', attachUserIfPresent, async (req, res) => {
 });
 
 // ------------------------------------------------------------
+// DELETE /builds/:id/parts — clear every part from a build (the
+// Builder's "Clear all parts"). One deleteMany rather than the frontend
+// firing 30 individual DELETE /parts/:partId calls: atomic, one round
+// trip, and it can't leave the build half-cleared if a request drops
+// partway through a bulk removal.
+// ------------------------------------------------------------
+router.delete('/:id/parts', attachUserIfPresent, async (req, res) => {
+  const build = await prisma.build.findUnique({ where: { id: req.params.id } });
+  if (!build) return res.status(404).json({ error: 'Build not found' });
+  if (!canAccess(build, req)) return res.status(403).json({ error: 'Not your build' });
+
+  await prisma.buildPart.deleteMany({ where: { buildId: req.params.id } });
+  res.status(204).send();
+});
+
+// ------------------------------------------------------------
 // GET /builds/:id/validate — run the compatibility engine
 // against the build's current parts. This is what the frontend
 // polls after every add/remove to refresh the warning banner.

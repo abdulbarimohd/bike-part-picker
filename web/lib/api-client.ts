@@ -124,6 +124,8 @@ export const api = {
     }),
   removeBuildPart: (buildId: string, partId: string) =>
     request<void>(`/builds/${buildId}/parts/${partId}`, { method: 'DELETE' }),
+  /** Empties every slot in one request (the Builder's "Clear all parts"). */
+  clearBuildParts: (buildId: string) => request<void>(`/builds/${buildId}/parts`, { method: 'DELETE' }),
   validateBuild: (buildId: string) =>
     request<{ compatible: boolean; warnings: CompatibilityWarning[] }>(`/builds/${buildId}/validate`),
 
