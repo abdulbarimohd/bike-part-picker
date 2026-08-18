@@ -13,7 +13,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, ChevronRight, Info, Loader2, Wrench, User } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ChevronRight, Info, Loader2, Trash2, Wrench, User } from 'lucide-react';
 import { api, CompatibilityWarning } from '../lib/api-client';
 import { formatGbp } from '../lib/money';
 import { BUILDER_SLOTS, CATEGORY_BY_SLUG, GROUPS, GroupKey, GROUP_OF } from '../lib/categories';
@@ -126,6 +126,24 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
   // narrowed from 40 to 14. Depends only on the discipline switch, not the
   // build, so it's fetched once per discipline rather than on every pick.
   const [rawCounts, setRawCounts] = useState<Record<string, number>>({});
+  // Which row's part is mid-removal -- disables just that row's trash
+  // button and swaps its icon for a spinner, rather than a global
+  // "saving" flag that would grey out the whole matrix for one row.
+  const [removingSlot, setRemovingSlot] = useState<string | null>(null);
+  // "Clear all parts" would wipe every slot from one click, so it arms
+  // on the first click (button flips to a red "Confirm?" state) and only
+  // fires on the second -- no native `confirm()`, which nothing else on
+  // this page uses, but still a deliberate two-step for the one action
+  // here destructive enough to need it. Arming auto-expires after 4s so
+  // an unrelated click well after the fact can't land on an armed button.
+  const [confirmClearAll, setConfirmClearAll] = useState(false);
+  const [clearingAll, setClearingAll] = useState(false);
+
+  useEffect(() => {
+    if (!confirmClearAll) return;
+    const t = setTimeout(() => setConfirmClearAll(false), 4000);
+    return () => clearTimeout(t);
+  }, [confirmClearAll]);
 
   useEffect(() => {
     let cancelled = false;
@@ -216,6 +234,31 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
     await refresh();
   }
 
+  /** Removes just this row's part. Scoped to `slot` (not the button
+   *  itself) so the spinner lands on the right row even though several
+   *  rows can be mid-removal at once (each click is independent). */
+  async function clearPart(slot: string, partId: string) {
+    setRemovingSlot(slot);
+    try {
+      await api.removeBuildPart(buildId, partId);
+      await refresh();
+    } finally {
+      setRemovingSlot(null);
+    }
+  }
+
+  function clearAllParts() {
+    if (!confirmClearAll) {
+      setConfirmClearAll(true);
+      return;
+    }
+    setConfirmClearAll(false);
+    setClearingAll(true);
+    api.clearBuildParts(buildId)
+      .then(refresh)
+      .finally(() => setClearingAll(false));
+  }
+
   const picked = Object.values(selected).filter(Boolean);
   // Manufacturer-sourced parts routinely have no published price, so `?? 0`
   // here used to silently count every one of them as free — a build that's
@@ -225,9 +268,25 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
   const unpricedCount = picked.filter((i) => i?.part?.basePricePence == null).length;
   const totalPricePence = picked.reduce((s, i) => s + (i?.part?.basePricePence ?? 0), 0);
   const totalWeightGrams = picked.reduce((s, i) => s + (i?.part?.weightGrams ?? 0), 0);
-  const criticalSlots = new Set(warnings.filter((w) => w.severity === 'critical').flatMap((w) => w.components));
+  const criticalWarnings = warnings.filter((w) => w.severity === 'critical');
+  const criticalSlots = new Set(criticalWarnings.flatMap((w) => w.components));
   const warnSlots = new Set(warnings.filter((w) => w.severity === 'warning').flatMap((w) => w.components));
-  const criticalCount = warnings.filter((w) => w.severity === 'critical').length;
+  const criticalCount = criticalWarnings.length;
+  // The bar used to just say "N blocking issues" -- true, but not
+  // actionable from where you're standing. Naming the actual rule and
+  // linking straight to the blocking slot's picker (which already shows
+  // this exact reason plus a one-click fix, see /pick) turns the bar into
+  // something you can act on without scrolling to find out what's wrong.
+  // Picks the first critical warning's first NON-frame named slot -- the
+  // frame is the fixed anchor everywhere else in this app (see the
+  // isAnchor comment in my-bike/[buildId]/page.tsx: you don't swap the
+  // frame to fix a mismatch, you swap the part measured against it), so
+  // sending someone to "fix" the frame is backwards even though it's
+  // almost always listed first in `components`. Falls back to frame only
+  // if it's the sole component (e.g. a frame-only rule with no counterpart).
+  const primaryIssue = criticalWarnings[0];
+  const primaryIssueSlot = primaryIssue && (primaryIssue.components.find((c) => c !== 'frame') ?? primaryIssue.components[0]);
+  const primaryIssueHref = primaryIssueSlot ? `/pick/${buildId}/${primaryIssueSlot}` : '#build-notes';
   // First load only: `options` is empty until the first refresh() lands.
   // Later refreshes (a part picked, rider saved) keep the previous state
   // on screen, so the sticky bar below doesn't blink out and back on
@@ -251,11 +310,31 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
     <div className="max-w-[1400px] mx-auto px-6 pt-8 pb-8">
       <div className="flex items-start justify-between gap-4 mb-1">
         <h1 className="font-display text-3xl font-bold text-ink">Bike Builder</h1>
-        {/* Sits in the white space next to the title -- builder-only,
-            not global chrome. The preference it sets still persists
-            into the picker and /parts pages, just without a visible
-            toggle there. */}
-        <DisciplineSwitch />
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Sits in the white space next to the title -- builder-only,
+              not global chrome. The preference it sets still persists
+              into the picker and /parts pages, just without a visible
+              toggle there. */}
+          <DisciplineSwitch />
+          {/* Hidden with nothing picked -- there's nothing to clear, and
+              showing it disabled just adds a dead control next to the
+              switch. Two-step confirm (see confirmClearAll above); the
+              button's own label carries the state so there's no separate
+              "are you sure" popover to build or dismiss. */}
+          {picked.length > 0 && (
+            <button
+              type="button"
+              onClick={clearAllParts}
+              disabled={clearingAll}
+              className={`inline-flex items-center gap-1.5 text-xs font-medium rounded-lg px-2.5 py-1.5 transition-colors disabled:opacity-60 ${
+                confirmClearAll ? 'bg-brake text-white hover:bg-brake/90' : 'text-ink-muted hover:text-brake hover:bg-brake-soft'
+              }`}
+            >
+              {clearingAll ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+              {clearingAll ? 'Clearing…' : confirmClearAll ? 'Confirm — clear all?' : 'Clear all parts'}
+            </button>
+          )}
+        </div>
       </div>
       <p className="text-sm text-ink-muted mb-6 max-w-2xl">
         Parts that can&apos;t physically work are filtered out. Ones that need an adapter or spacer
@@ -280,30 +359,48 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
         </Link>
       )}
 
-      {/* Status + totals. When there are notes/issues the pill doubles as
-          a jump link to the #build-notes section at the bottom of a long
-          page -- "2 notes" was otherwise a claim with nothing to click. */}
+      {/* Status + totals. Compatible: the pill doubles as a jump link to
+          #build-notes when there's anything to read -- "2 notes" was
+          otherwise a claim with nothing to click. Not compatible: names
+          the actual blocking rule instead of a bare count, with its own
+          "Fix" link straight to the slot that needs to change (see
+          primaryIssue above) -- a second issue, if any, still reaches
+          #build-notes rather than being silently dropped. */}
       <div className="grid sm:grid-cols-3 gap-3 mb-6">
         {(() => {
           const statusClass = `sm:col-span-2 flex items-center gap-2.5 rounded-xl border px-4 py-3.5 text-sm font-medium shadow-card ${
             compatible ? 'border-wheel-ring bg-wheel-soft text-wheel-text' : 'border-brake-ring bg-brake-soft text-brake-text'
           }`;
-          const statusInner = (
-            <>
-              {compatible ? <CheckCircle2 size={18} className="shrink-0" /> : <AlertTriangle size={18} className="shrink-0" />}
-              {compatible
-                ? `Compatible${warnings.length ? ` — ${warnings.length} note${warnings.length === 1 ? '' : 's'}` : ''}`
-                : `${criticalCount} blocking issue${criticalCount === 1 ? '' : 's'}`}
-            </>
-          );
-          return warnings.length > 0 ? (
-            <a href="#build-notes" className={`${statusClass} hover:brightness-[0.98] transition-[filter]`}>
-              {statusInner}
-              {/* Rotated chevron = "the notes are below you". */}
-              <ChevronRight size={15} className="ml-auto shrink-0 rotate-90 opacity-60" />
-            </a>
-          ) : (
-            <div className={statusClass}>{statusInner}</div>
+          if (compatible) {
+            const statusInner = (
+              <>
+                <CheckCircle2 size={18} className="shrink-0" />
+                {`Everything compatible${warnings.length ? ` — ${warnings.length} note${warnings.length === 1 ? '' : 's'}` : ''}`}
+              </>
+            );
+            return warnings.length > 0 ? (
+              <a href="#build-notes" className={`${statusClass} hover:brightness-[0.98] transition-[filter]`}>
+                {statusInner}
+                {/* Rotated chevron = "the notes are below you". */}
+                <ChevronRight size={15} className="ml-auto shrink-0 rotate-90 opacity-60" />
+              </a>
+            ) : (
+              <div className={statusClass}>{statusInner}</div>
+            );
+          }
+          return (
+            <div className={statusClass}>
+              <AlertTriangle size={18} className="shrink-0" />
+              <span className="truncate">{primaryIssue?.title ?? `${criticalCount} blocking issue${criticalCount === 1 ? '' : 's'}`}</span>
+              {criticalCount > 1 && (
+                <a href="#build-notes" className="text-xs font-normal underline underline-offset-2 shrink-0">
+                  +{criticalCount - 1} more
+                </a>
+              )}
+              <Link href={primaryIssueHref} className="ml-auto shrink-0 inline-flex items-center gap-1 font-semibold hover:underline">
+                Fix <ChevronRight size={14} />
+              </Link>
+            </div>
           );
         })()}
         <div className="rounded-xl bg-white border border-black/5 px-4 py-3 shadow-card">
@@ -528,6 +625,26 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
                             </span>
                           )
                         )}
+                        {/* Per-row remove, only once a part is chosen -- empty
+                            slots have nothing to clear. Same `relative z-10
+                            p-1 -m-1` trick as the info/warning buttons above:
+                            lifts it above the row's absolutely-positioned nav
+                            Link and pads a comfortable hit area onto the bare
+                            13px icon without shifting the visible layout. No
+                            confirm step, matching the single-part removal
+                            already on the picker and My Bike pages -- only
+                            the bulk "clear all" above needs one. */}
+                        {chosen && (
+                          <button
+                            type="button"
+                            aria-label={`Remove ${label}`}
+                            onClick={() => clearPart(slot, chosen.part.id)}
+                            disabled={removingSlot === slot}
+                            className="relative z-10 shrink-0 rounded-full p-1 -m-1 text-ink-muted/40 hover:text-brake disabled:opacity-50 transition-colors"
+                          >
+                            {removingSlot === slot ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
+                          </button>
+                        )}
                         <ChevronRight size={16} className="text-ink-muted/50" />
                       </span>
                     </div>
@@ -670,33 +787,49 @@ export default function BuilderMatrix({ buildId }: BuilderMatrixProps) {
       {!neverLoaded && (
         <div className="sticky bottom-0 -mx-6 mt-6 z-40 md:hidden border-t border-black/10 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
           <div className="max-w-[1400px] mx-auto flex items-center gap-3 px-4 py-2.5 text-sm">
-            {(() => {
-              const stickyStatus = (
-                <>
-                  {compatible ? <CheckCircle2 size={15} className="shrink-0" /> : <AlertTriangle size={15} className="shrink-0" />}
-                  <span className="whitespace-nowrap">
-                    {compatible
-                      ? `Compatible${warnings.length ? ` · ${warnings.length} note${warnings.length === 1 ? '' : 's'}` : ''}`
-                      : `${criticalCount} issue${criticalCount === 1 ? '' : 's'}`}
-                  </span>
-                </>
-              );
-              const cls = `inline-flex items-center gap-1.5 font-medium ${compatible ? 'text-wheel-text' : 'text-brake-text'}`;
-              return warnings.length > 0 ? (
-                <a href="#build-notes" className={cls}>{stickyStatus}</a>
-              ) : (
-                <span className={cls}>{stickyStatus}</span>
-              );
-            })()}
-            <span className="text-xs text-ink-muted tabular-nums whitespace-nowrap">
-              {picked.length}/{BUILDER_SLOTS.length} slots
-            </span>
-            <span className="ml-auto text-right leading-tight">
-              <span className="block font-display font-semibold text-ink tabular-nums">{formatGbp(totalPricePence)}</span>
-              {unpricedCount > 0 && (
-                <span className="block text-[10px] text-ink-muted">+{unpricedCount} unpriced</span>
-              )}
-            </span>
+            {compatible ? (
+              <>
+                {(() => {
+                  const stickyStatus = (
+                    <>
+                      <CheckCircle2 size={15} className="shrink-0" />
+                      <span className="whitespace-nowrap">
+                        Compatible{warnings.length ? ` · ${warnings.length} note${warnings.length === 1 ? '' : 's'}` : ''}
+                      </span>
+                    </>
+                  );
+                  const cls = 'inline-flex items-center gap-1.5 font-medium text-wheel-text';
+                  return warnings.length > 0 ? (
+                    <a href="#build-notes" className={cls}>{stickyStatus}</a>
+                  ) : (
+                    <span className={cls}>{stickyStatus}</span>
+                  );
+                })()}
+                <span className="text-xs text-ink-muted tabular-nums whitespace-nowrap">
+                  {picked.length}/{BUILDER_SLOTS.length} slots
+                </span>
+                <span className="ml-auto text-right leading-tight">
+                  <span className="block font-display font-semibold text-ink tabular-nums">{formatGbp(totalPricePence)}</span>
+                  {unpricedCount > 0 && (
+                    <span className="block text-[10px] text-ink-muted">+{unpricedCount} unpriced</span>
+                  )}
+                </span>
+              </>
+            ) : (
+              // Narrow screens don't have room for status + slots + total
+              // all at once -- when something's blocking, the name of the
+              // issue and a way to fix it matter more here than the running
+              // total, so those two take the whole row instead.
+              <>
+                <span className="inline-flex items-center gap-1.5 font-medium text-brake-text min-w-0">
+                  <AlertTriangle size={15} className="shrink-0" />
+                  <span className="truncate">{primaryIssue?.title ?? `${criticalCount} issue${criticalCount === 1 ? '' : 's'}`}</span>
+                </span>
+                <Link href={primaryIssueHref} className="ml-auto shrink-0 inline-flex items-center gap-1 font-semibold text-brake-text">
+                  Fix <ChevronRight size={14} />
+                </Link>
+              </>
+            )}
           </div>
         </div>
       )}
