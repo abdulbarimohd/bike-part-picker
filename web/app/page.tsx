@@ -148,6 +148,17 @@ export default function HomePage() {
           >
             I already own a bike <ArrowRight size={16} className="text-contact" />
           </Link>
+          {/* Not another internal tool -- /buy is honest about sending
+              you to an affiliate partner (Ribble) rather than pretending
+              this site sells bikes. Same secondary-button weight as
+              "I already own a bike" since it's an equal third path off
+              the hero, not a lesser afterthought. */}
+          <Link
+            href="/buy"
+            className="inline-flex items-center gap-2 bg-white text-ink text-sm font-medium rounded-xl px-5 py-3 border border-black/10 hover:border-black/25 transition-colors"
+          >
+            Buy a complete bike <ArrowRight size={16} className="text-wheel" />
+          </Link>
         </div>
       </section>
 
