@@ -1,16 +1,28 @@
-'use client';
-
 // app/compatibility/rules/[id]/page.tsx
 //
 // A single compatibility rule's full entry -- one URL per rule ID, so
 // e.g. "R-BB-01" or "bottom bracket shell mismatch" style searches
 // have somewhere specific to land, rather than only the index table.
+//
+// Server component (was 'use client' + useEffect): the rule and the
+// catalogue (for the form legend and the sibling list) are awaited in
+// parallel through lib/server-api.ts, so the whole entry -- and a
+// per-rule <title>/description from generateMetadata -- is in the
+// initial HTML. An unknown id is a real 404 via notFound(); the client
+// version answered 200 with "No such rule". A catalogue failure still
+// degrades to no legend / no siblings, exactly as before.
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { ArrowLeft, ShieldAlert, Wrench, ArrowRight } from 'lucide-react';
-import { compatibilityApi, RuleEntry, RuleFormDef, RuleSection } from '../../../../lib/compatibility-client';
+import { getRule, getRuleCatalogue } from '../../../../lib/server-api';
+import type { RuleCatalogue, RuleEntry } from '../../../../lib/server-api';
+import { clampDescription } from '../../../../lib/site';
+
+export const revalidate = 86400;
+
+type Params = { id: string };
 
 const SEVERITY_STYLE: Record<string, string> = {
   critical: 'bg-brake-soft text-brake',
@@ -26,32 +38,92 @@ const SEVERITY_EXPLAINER: Record<string, string> = {
   advisory: 'Shown on the part page as reference; not gated because nothing else in the schema carries a comparable field to check it against.',
 };
 
-export default function RuleDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const [rule, setRule] = useState<RuleEntry | null | undefined>(undefined);
-  const [forms, setForms] = useState<RuleFormDef[]>([]);
+// ---- Data ------------------------------------------------------------------
+
+/** The rule (null on 404, throws on other errors -- intended) alongside
+ *  the catalogue, which is allowed to fail: forms/sections just come
+ *  back empty, same as the old client-side .catch. */
+async function loadRule(id: string): Promise<{ rule: RuleEntry | null; catalogue: RuleCatalogue | null }> {
+  const [rule, catalogue] = await Promise.all([
+    getRule(id),
+    getRuleCatalogue().catch(() => null),
+  ]);
+  return { rule, catalogue };
+}
+
+// ---- Metadata --------------------------------------------------------------
+
+/** Rule text as plain words -- the same strip the sibling list uses. */
+const stripMd = (s: string) => s.replace(/[*_`]/g, '');
+
+/** "16. Rider fit — not part-to-part" -> "Rider fit — not part-to-part". */
+const sectionShortTitle = (title: string) => title.replace(/^\d+\.\s*/, '');
+
+/**
+ * Title text budget before the layout appends " — Build My Bike". Half
+ * the rules are a short clause ("BB shell standard matches") and fit
+ * whole; the long ones are a rule sentence followed by commentary
+ * ("Fork travel ≤ frame's max rated travel. Exceeding it wrecks…"), so
+ * the first sentence is kept and anything still over budget is cut at
+ * a word boundary. The id is never touched: it is what people search.
+ */
+const TITLE_BUDGET = 60;
+
+function ruleTitle(rule: RuleEntry): string {
+  const plain = stripMd(rule.rule).replace(/\s+/g, ' ').trim();
+  const prefix = `${rule.id} — `;
+  const budget = TITLE_BUDGET - prefix.length;
+  let text = plain;
+  if (text.length > budget) {
+    const firstSentence = text.match(/^(.+?[.!?])\s+[A-Z]/);
+    // Sentence kept without its full stop: a <title> isn't prose.
+    if (firstSentence && firstSentence[1].length <= budget) text = firstSentence[1].replace(/\.$/, '');
+  }
+  if (text.length > budget) {
+    const cut = text.slice(0, budget);
+    const lastSpace = cut.lastIndexOf(' ');
+    text = `${cut.slice(0, lastSpace > 20 ? lastSpace : cut.length).replace(/[,;:\-–—(]$/, '')}…`;
+  }
+  return `${prefix}${text}`;
+}
+
+function ruleDescription(rule: RuleEntry): string {
+  const plain = stripMd(rule.rule).replace(/\s+/g, ' ').trim().replace(/\.$/, '');
+  const severity = rule.severity.charAt(0).toUpperCase() + rule.severity.slice(1);
+  const fields = rule.fields ? stripMd(rule.fields).replace(/\s+/g, ' ').trim() : '';
+  const core = `${severity} compatibility rule: ${plain}.` + (fields ? ` Checks ${fields}.` : '');
+  const withSection = `${core} From the ${sectionShortTitle(rule.sectionTitle)} section of the Build My Bike compatibility engine.`;
+  // The section sentence is the least informative clause, so it is the
+  // first to go when a long rule would otherwise be clamped mid-fields;
+  // clampDescription still backstops a rule that is long on its own.
+  return clampDescription(withSection.length <= 158 ? withSection : core);
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const rule = await getRule(params.id);
+  // Same 404 the page body produces; Next honours notFound() here too.
+  if (!rule) notFound();
+  // Canonical uses the id as the API spells it, not as it was typed in
+  // the URL, so any alias that resolves still points at one address.
+  return {
+    title: ruleTitle(rule),
+    description: ruleDescription(rule),
+    alternates: { canonical: `/compatibility/rules/${encodeURIComponent(rule.id)}` },
+  };
+}
+
+// ---- Page ------------------------------------------------------------------
+
+export default async function RuleDetailPage({ params }: { params: Params }) {
+  const { id } = params;
+  const { rule, catalogue } = await loadRule(id);
+  if (!rule) notFound();
+
+  const forms = catalogue?.forms ?? [];
   // 07.7: the full catalogue is already fetched for the form legend; keep
   // its sections too so the page can list this rule's siblings (the same
   // section == the same R-XX- prefix / subsystem) as "Related rules".
-  const [sections, setSections] = useState<RuleSection[]>([]);
-
-  useEffect(() => {
-    setRule(undefined);
-    compatibilityApi.getRule(id).then(setRule).catch(() => setRule(null));
-    compatibilityApi.getRules()
-      .then((d) => { setForms(d.forms); setSections(d.sections); })
-      .catch(() => { setForms([]); setSections([]); });
-  }, [id]);
-
-  if (rule === undefined) return <div className="max-w-3xl mx-auto px-6 py-10 text-sm text-ink-muted">Loading…</div>;
-  if (rule === null) {
-    return (
-      <div className="max-w-3xl mx-auto px-6 py-10">
-        <p className="text-sm text-ink-muted mb-4">No such rule: {id}</p>
-        <Link href="/compatibility/rules" className="text-sm text-chassis hover:underline">Back to the rule reference</Link>
-      </div>
-    );
-  }
+  const sections = catalogue?.sections ?? [];
 
   const formKey = rule.form.match(/^([A-F])/)?.[1];
   const formDef = forms.find((f) => f.key === formKey);

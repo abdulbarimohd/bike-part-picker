@@ -1,8 +1,19 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   ArrowRight, ShieldCheck, Wrench, SlidersHorizontal, AlertTriangle, FileCheck2, EyeOff,
   Check, Info, ListPlus, Eye, ShoppingCart, PoundSterling,
 } from 'lucide-react';
+import { SITE_TITLE, SITE_DESCRIPTION } from '../lib/site';
+
+// `absolute` opts out of the root layout's "%s — Build My Bike" template:
+// SITE_TITLE already leads with the site name, so the template would
+// double it up.
+export const metadata: Metadata = {
+  title: { absolute: SITE_TITLE },
+  description: SITE_DESCRIPTION,
+  alternates: { canonical: '/' },
+};
 
 // `tone` gives each concept its own subsystem-tinted icon tile (01.3):
 // full literal class strings so Tailwind's scanner sees them. The hues

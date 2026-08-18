@@ -1,11 +1,13 @@
 // app/privacy/page.tsx
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Check } from 'lucide-react';
 import LegalToc from '../../components/LegalToc';
 
-export const metadata = {
-  title: 'Privacy Policy — Build My Bike',
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
   description: 'What data Build My Bike collects, why, and how to control it.',
+  alternates: { canonical: '/privacy' },
 };
 
 // Shared with terms/page.tsx by convention (02.2): 20px display H2 over

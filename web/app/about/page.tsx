@@ -1,12 +1,16 @@
 // app/about/page.tsx
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ShieldCheck, Wrench, EyeOff, Mail } from 'lucide-react';
 import PartIcon from '../../components/PartIcon';
 import { ProvenanceChip } from '../../components/ProvenanceBadge';
 
-export const metadata = {
-  title: 'About — Build My Bike',
+// Short title only: the root layout's title.template appends
+// " — Build My Bike", so spelling the suffix here would double it.
+export const metadata: Metadata = {
+  title: 'About',
   description: 'Why Build My Bike exists and how the compatibility engine works.',
+  alternates: { canonical: '/about' },
 };
 
 // The page's one visual (01.4): a "spec sheet" card assembled from the

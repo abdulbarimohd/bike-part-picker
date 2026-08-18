@@ -325,6 +325,65 @@ router.get('/categories', (_req, res) => {
   })));
 });
 
+/**
+ * GET /parts/sitemap -- every { slug, partId, lastModified } the frontend
+ * should list in its sitemap.xml.
+ *
+ * Enumerated through the category delegates (one findMany per CATEGORIES
+ * entry) rather than `prisma.part.findMany()` on purpose: a Part row only
+ * has a public URL if a category-table row points at it, and the detail
+ * routes below look up by category delegate. Walking the same delegates
+ * guarantees every slug/partId pair emitted here resolves on both
+ * /parts/:slug/:partId and /compatibility/parts/:slug/:partId, so the
+ * sitemap never advertises a URL that 404s.
+ *
+ * `lastModified` is the newest of createdAt, verifiedAt and the latest
+ * price recordedAt because Part has no updatedAt column -- those three
+ * are the only timestamps that move when a part's public page changes
+ * (it appears, a human re-checks its specs, or its price is refreshed).
+ *
+ * Registered before the per-category loop, next to /categories: Express
+ * matches in registration order, so literal paths stay ahead of the
+ * generated and parametric (`/:slug/...`) ones and no future route can
+ * shadow this one. (No category is named "sitemap", so today it is
+ * hygiene rather than a live conflict.)
+ */
+router.get('/sitemap', async (_req, res) => {
+  const newest = (...dates: (Date | null | undefined)[]): Date =>
+    dates.filter((d): d is Date => d instanceof Date).reduce((a, b) => (b > a ? b : a));
+
+  const perCategory = await Promise.all(
+    Object.entries(CATEGORIES).map(async ([slug, config]) => {
+      const rows: { partId: string; part: { createdAt: Date; verifiedAt: Date | null; prices: { recordedAt: Date }[] } }[] =
+        await (prisma as any)[config.model].findMany({
+          select: {
+            partId: true,
+            part: {
+              select: {
+                createdAt: true,
+                verifiedAt: true,
+                prices: { select: { recordedAt: true }, orderBy: { recordedAt: 'desc' }, take: 1 },
+              },
+            },
+          },
+        });
+      return rows.map((r) => ({
+        slug,
+        partId: r.partId,
+        // createdAt is non-null in the schema, so the reduce always has
+        // at least one date and never sees an empty list.
+        lastModified: newest(r.part.createdAt, r.part.verifiedAt, r.part.prices[0]?.recordedAt).toISOString(),
+      }));
+    })
+  );
+
+  // The catalogue only changes on import/verify passes, so an hour of
+  // freshness with a day of stale-while-revalidate is plenty and spares
+  // the DB a 27-table scan on every sitemap regeneration.
+  res.set('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400');
+  res.json(perCategory.flat());
+});
+
 for (const [slug, config] of Object.entries(CATEGORIES)) {
   const delegate = () => (prisma as any)[config.model];
 

@@ -6,15 +6,45 @@ import PartsMenu from '../components/PartsMenu';
 import MobileNav from '../components/MobileNav';
 import Logo from '../components/Logo';
 import { DisciplineProvider } from '../components/DisciplineProvider';
+import { SITE_NAME, SITE_URL, SITE_TITLE, SITE_DESCRIPTION, TITLE_TEMPLATE } from '../lib/site';
 
 // next/font downloads and self-hosts at build time — no runtime CDN
 // request, so nothing breaks if the container has no outbound network.
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
 const display = Space_Grotesk({ subsets: ['latin'], variable: '--font-display', display: 'swap' });
 
+// Site-wide metadata defaults. Two decisions worth spelling out:
+//
+// - `title.template`: every page/layout below sets a SHORT title ("Frames
+//   — specs, UK prices & what fits") and this template appends the site
+//   name, so the suffix is spelled once and no page can drift to a
+//   different separator or forget it. The home page opts out with
+//   `title: { absolute }` because SITE_TITLE already carries the name.
+//   Intermediate layouts that set their own title must re-declare the
+//   template (see TITLE_TEMPLATE in lib/site.ts for why).
+// - `metadataBase`: lets pages write relative canonicals / OG image paths
+//   ("/parts/frames") and have Next resolve them against the real origin,
+//   which lib/site.ts pins to the live domain rather than the per-deploy
+//   VERCEL_URL. No canonical is set here on purpose -- a layout-level
+//   canonical would be inherited by every page that forgot its own and
+//   silently point them all at the home page.
+//
+// The old description said "for mountain bikes"; the catalogue covers
+// road, gravel and MTB, which is why SITE_DESCRIPTION replaces it.
 export const metadata: Metadata = {
-  title: 'Build My Bike',
-  description: 'A compatibility-checked build tool for mountain bikes.',
+  metadataBase: new URL(SITE_URL),
+  title: { default: SITE_TITLE, template: TITLE_TEMPLATE },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  openGraph: {
+    type: 'website',
+    siteName: SITE_NAME,
+    locale: 'en_GB',
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
+  twitter: { card: 'summary_large_image', title: SITE_TITLE, description: SITE_DESCRIPTION },
+  robots: { index: true, follow: true },
 };
 
 // One footer column: small-caps heading over a stacked list of links.

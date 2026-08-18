@@ -9,12 +9,14 @@
 // expectation line (no numeric SLA), a "what to include" list that
 // mirrors the provenance system, and a short FAQ answered strictly from
 // the About / Privacy / Terms pages.
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Mail, FileSearch, ShieldCheck, Tag, Link2 } from 'lucide-react';
 
-export const metadata = {
-  title: 'Contact — Build My Bike',
+export const metadata: Metadata = {
+  title: 'Contact',
   description: 'Get in touch with the Build My Bike team.',
+  alternates: { canonical: '/contact' },
 };
 
 const CONTACT_EMAIL = 'hello@buildmybike.co.uk';

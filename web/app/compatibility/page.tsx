@@ -1,5 +1,3 @@
-'use client';
-
 // app/compatibility/page.tsx
 //
 // Hub for the compatibility content surface: the rule-by-rule
@@ -8,12 +6,38 @@
 // below is a real catalogue row fetched from the API, not a mocked
 // example -- this page is itself generated content, same as the
 // pages it links to.
+//
+// Server component: the frames showcase used to be fetched in a
+// useEffect, which meant crawlers saw the hub with no part links at all
+// (the whole point of the tiles is to be crawlable entry points). Now
+// the list is awaited on the server through lib/server-api.ts and the
+// tiles are in the initial HTML; ISR (revalidate below) keeps it fresh
+// without a fetch per request.
+//
+// One knowing difference from the client version: the browser client
+// injected the header's discipline switch (localStorage) as a filter,
+// so a road-mode visitor saw road frames here. The server has no access
+// to that, so this showcase is the unfiltered catalogue order. Six
+// tiles of "some real frames" is what the section is for; acceptable.
 
-import { useEffect, useState } from 'react';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { BookOpen, Wrench, ArrowRight } from 'lucide-react';
-import { api } from '../../lib/api-client';
+import { getPartsList } from '../../lib/server-api';
+import type { PartDetail } from '../../lib/server-api';
 import { CATEGORIES, CATEGORY_BY_SLUG, accentFor, formatSpecValue } from '../../lib/categories';
+
+export const revalidate = 3600;
+
+export const metadata: Metadata = {
+  title: 'Bike part compatibility guides — what fits what',
+  // Fixed copy (the 103 figure is the same one the page body and
+  // SITE_DESCRIPTION quote), kept under the ~158-char snippet limit.
+  description:
+    'Bike part compatibility made browsable: 103 rules covering every part-to-part constraint, ' +
+    'a "what fits this?" page per part, and the full rule reference.',
+  alternates: { canonical: '/compatibility' },
+};
 
 // 04.9: the showcase tiles used to be icon-on-top with two short text
 // lines under it, which at 375px left most of the tile empty. Same
@@ -24,12 +48,16 @@ import { CATEGORIES, CATEGORY_BY_SLUG, accentFor, formatSpecValue } from '../../
 // field off the fetched row, formatted the same way the catalogue does.
 const FRAME_SPEC_PREVIEW = CATEGORY_BY_SLUG.frames.specs.slice(0, 3);
 
-export default function CompatibilityHubPage() {
-  const [frames, setFrames] = useState<any[]>([]);
-
-  useEffect(() => {
-    api.getParts('frames').then((rows) => setFrames(rows.slice(0, 6))).catch(() => setFrames([]));
-  }, []);
+export default async function CompatibilityHubPage() {
+  // A showcase must never take the hub down with it: an API blip (or a
+  // 404 -> null) just means no tiles this render, same as the old
+  // client-side .catch(() => setFrames([])).
+  let frames: PartDetail[] = [];
+  try {
+    frames = ((await getPartsList('frames')) ?? []).slice(0, 6);
+  } catch {
+    frames = [];
+  }
 
   return (
     <div className="max-w-5xl mx-auto px-6 py-8">

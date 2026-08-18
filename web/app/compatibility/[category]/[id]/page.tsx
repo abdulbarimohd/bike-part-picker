@@ -1,5 +1,3 @@
-'use client';
-
 // app/compatibility/[category]/[id]/page.tsx
 //
 // "What fits a <part>?" -- the per-part SEO content page. Every count,
@@ -8,13 +6,33 @@
 // filterCompatible*/getCompatibilityWarnings engine functions against
 // every real row currently in the catalogue for each related
 // category. Nothing on this page is written by hand per part.
+//
+// Server component (was 'use client' + useEffect): this is the page the
+// whole compatibility surface exists to get indexed, and a client fetch
+// meant crawlers saw "Working out what fits…" and nothing else. Now the
+// data is awaited on the server through lib/server-api.ts, the full
+// markup ships in the initial HTML, and generateMetadata builds a
+// per-part <title>/description from the same payload (Next dedupes the
+// two identical fetches within one request). The FAQ block is native
+// <details>/<summary>, so nothing here needs JS to be readable.
+//
+// Failure model: a part the API doesn't know is a real 404 via
+// notFound() (the client version answered 200 with placeholder text);
+// any other API error throws to Next's error boundary. Both intended.
 
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, XCircle, HelpCircle, ChevronDown } from 'lucide-react';
-import { compatibilityApi, PartCompatibility } from '../../../../lib/compatibility-client';
+import JsonLd from '../../../../components/JsonLd';
+import { getPartCompatibility } from '../../../../lib/server-api';
+import type { CompatRelation, PartCompatibility } from '../../../../lib/server-api';
+import { absUrl, clampDescription } from '../../../../lib/site';
 import { CATEGORY_BY_SLUG, accentFor } from '../../../../lib/categories';
+
+export const revalidate = 3600;
+
+type Params = { category: string; id: string };
 
 // 03.1: the "N of M compatible" chip used to be green only at 100% and
 // one flat orange for everything else, so "88 of 93" and "1 of 4" read
@@ -53,30 +71,120 @@ function faqKeyNumber(answer: string): string | null {
   return null;
 }
 
-export default function WhatFitsPage() {
-  const { category, id } = useParams<{ category: string; id: string }>();
-  const [data, setData] = useState<PartCompatibility | null | undefined>(undefined);
-  const [loading, setLoading] = useState(true);
+// ---- Metadata --------------------------------------------------------------
+
+/**
+ * "What fits the Specialized Epic 8 Expert Frameset?" -- always the full
+ * part name. An earlier version cut long names back to keep the whole
+ * <title> under 60 characters, but that turned "Epic 8 Expert Frameset"
+ * into "Epic 8 Expert", which names a different product (the complete
+ * bike, not the frame). Search engines truncate long titles for display
+ * anyway; they do not misidentify the part. Accuracy wins.
+ */
+function whatFitsTitle(brand: string, name: string): string {
+  return `What fits the ${brand} ${name}?`;
+}
+
+/** "5 of 8 forks" / "42 of 85 rotors (rear)" -- one relation, in the
+ *  page's own words. Only numbers the API returned. */
+function relationPhrase(rel: CompatRelation): string {
+  const label = rel.categoryLabel.toLowerCase();
+  return `${rel.compatibleCount} of ${rel.totalCandidates} ${label}${rel.position ? ` (${rel.position})` : ''}`;
+}
+
+/** Joins with commas and a final "and": ["a","b","c"] -> "a, b and c". */
+function joinNatural(items: string[]): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+function buildDescription(data: PartCompatibility): string {
+  const { brand, name, categoryLabel } = data.part;
+  const lead = `Compatibility guide for the ${brand} ${name} (${categoryLabel})`;
+  if (data.relations.length === 0) {
+    // Mirrors the page's own empty state -- nothing is cross-checked
+    // against this category yet, and the description says so.
+    return clampDescription(`${lead}. Nothing else in the catalogue is checked against this category yet.`);
+  }
+  // Summarise up to three relations, but drop back to two or one when a
+  // long part name would push the sentence past the snippet limit --
+  // a whole clause with fewer numbers reads better than a clamped one.
+  // clampDescription is the last resort for a very long name alone.
+  const attempts = [3, 2, 1].map((n) => {
+    const shown = data.relations.slice(0, n);
+    // Only claim a blocking rule when one of the summarised relations
+    // actually has blocked candidates; otherwise say what is true instead.
+    const anyBlocked = shown.some((r) => r.compatibleCount < r.totalCandidates);
+    const tail = anyBlocked
+      ? ', with the exact rule that blocks the rest.'
+      : ', checked rule by rule against the live catalogue.';
+    return `${lead}: ${joinNatural(shown.map(relationPhrase))} fit${tail}`;
+  });
+  return clampDescription(attempts.find((s) => s.length <= 158) ?? attempts[attempts.length - 1]);
+}
+
+export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
+  const data = await getPartCompatibility(params.category, params.id);
+  // Same 404 the page body produces; Next honours notFound() here too,
+  // so a missing part never gets a half-built <title>.
+  if (!data) notFound();
+  const title = whatFitsTitle(data.part.brand, data.part.name);
+  const description = buildDescription(data);
+  const canonical = `/compatibility/${data.part.categorySlug}/${data.part.partId}`;
+  return {
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical },
+  };
+}
+
+// ---- Page ------------------------------------------------------------------
+
+export default async function WhatFitsPage({ params }: { params: Params }) {
+  const { category, id } = params;
+  const data = await getPartCompatibility(category, id);
+  if (!data) notFound();
 
   const config = CATEGORY_BY_SLUG[category];
   const { accent, soft } = accentFor(category);
 
-  useEffect(() => {
-    setLoading(true);
-    compatibilityApi.getPartCompatibility(category, id)
-      .then(setData)
-      .catch(() => setData(null))
-      .finally(() => setLoading(false));
-  }, [category, id]);
-
-  if (loading) return <div className="max-w-4xl mx-auto px-6 py-10 text-sm text-ink-muted">Working out what fits…</div>;
-  if (!data) return <div className="max-w-4xl mx-auto px-6 py-10 text-sm text-ink-muted">No compatibility data for this part.</div>;
-
   const title = `${data.part.brand} ${data.part.name}`;
   const partHref = `/parts/${data.part.categorySlug}/${data.part.partId}`;
+  const pageUrl = absUrl(`/compatibility/${data.part.categorySlug}/${data.part.partId}`);
+
+  // Structured data. The breadcrumb mirrors the site's real hierarchy
+  // (category list -> part detail -> this page); the FAQPage is the API's
+  // generated Q&A verbatim -- same text the <details> below render, not
+  // a rewrite for the crawler.
+  const jsonLd: Record<string, unknown>[] = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: absUrl('/') },
+        { '@type': 'ListItem', position: 2, name: data.part.categoryLabel, item: absUrl(`/parts/${data.part.categorySlug}`) },
+        { '@type': 'ListItem', position: 3, name: title, item: absUrl(partHref) },
+        { '@type': 'ListItem', position: 4, name: 'What fits', item: pageUrl },
+      ],
+    },
+  ];
+  if (data.faqs.length > 0) {
+    jsonLd.push({
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: data.faqs.map((f) => ({
+        '@type': 'Question',
+        name: f.question,
+        acceptedAnswer: { '@type': 'Answer', text: f.answer },
+      })),
+    });
+  }
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8" style={{ ['--accent' as string]: accent }}>
+      <JsonLd data={jsonLd} />
+
       <Link href={partHref} className="inline-flex items-center gap-1.5 text-sm text-ink-muted hover:text-ink mb-6">
         <ArrowLeft size={14} /> {title}
       </Link>

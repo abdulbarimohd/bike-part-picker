@@ -54,6 +54,14 @@ services:
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:4000}
     restart: unless-stopped
+    environment:
+      # The web container's *server* process (server components,
+      # generateMetadata, sitemap.ts) must reach the API over the compose
+      # network, where `api` is the service name. lib/server-api.ts reads
+      # API_URL first and only falls back to NEXT_PUBLIC_API_URL -- the
+      # browser-facing localhost URL baked in above, which resolves to the
+      # web container itself from inside the network, not to the API.
+      API_URL: http://api:4000
     depends_on:
       - api
     ports:

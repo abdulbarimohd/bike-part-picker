@@ -1,11 +1,13 @@
 // app/terms/page.tsx
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Mail } from 'lucide-react';
 import LegalToc from '../../components/LegalToc';
 
-export const metadata = {
-  title: 'Terms of Service — Build My Bike',
+export const metadata: Metadata = {
+  title: 'Terms of Service',
   description: 'The terms for using Build My Bike.',
+  alternates: { canonical: '/terms' },
 };
 
 // Same treatment as privacy/page.tsx (02.2): 20px display H2 over 14px
