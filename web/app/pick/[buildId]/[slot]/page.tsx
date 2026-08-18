@@ -13,7 +13,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Loader2, Ban, ChevronDown, Trash2, Wrench } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, Check, Loader2, Ban, ChevronDown, Trash2, Wrench } from 'lucide-react';
 import PartIcon from '../../../../components/PartIcon';
 import { useDiscipline } from '../../../../components/DisciplineProvider';
 import { api, UpgradePath, UpgradePathChange } from '../../../../lib/api-client';
@@ -112,6 +112,7 @@ function PickerInner() {
 
   const fits = parts.filter((p) => p.compatible !== false);
   const blocked = parts.filter((p) => p.compatible === false);
+  const warnedCount = fits.filter((p) => (p.warnedBy?.length ?? 0) > 0).length;
   const preview = category.specs.slice(0, 3);
   const slotName = slotConfig.label.toLowerCase();
 
@@ -133,7 +134,7 @@ function PickerInner() {
           <p className="text-xs text-ink-muted">
             {loading
               ? 'Checking what fits…'
-              : `${fits.length} fit${fits.length === 1 ? 's' : ''} your build${blocked.length ? ` · ${blocked.length} ${blocked.length === 1 ? "doesn't" : "don't"}` : ''}`}
+              : `${fits.length} fit${fits.length === 1 ? 's' : ''} your build${warnedCount ? ` · ${warnedCount} worth a check` : ''}${blocked.length ? ` · ${blocked.length} ${blocked.length === 1 ? "doesn't" : "don't"}` : ''}`}
           </p>
         </div>
         {currentId && (
@@ -172,6 +173,14 @@ function PickerInner() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8 items-start">
               {fits.map((p) => {
                 const selected = p.partId === currentId;
+                // Bolts on, but not a clean fit -- the same `warning`-
+                // severity check the build page already tints amber once a
+                // part is chosen (see BuilderMatrix's `flagged`/warnOpen),
+                // computed here for every candidate up front so the amber
+                // shows in the picker BEFORE you choose it, not after.
+                // Still in `fits`: only a `critical` warning removes a
+                // candidate from this grid.
+                const warned = (p.warnedBy?.length ?? 0) > 0;
                 return (
                   <button
                     key={p.partId}
@@ -179,7 +188,15 @@ function PickerInner() {
                     disabled={saving !== null}
                     className="text-left accent-tile shadow-card flex flex-col disabled:opacity-60"
                     style={{
-                      ['--accent' as string]: accent,
+                      // Swaps which colour `.accent-tile`'s border-color
+                      // mix reads, so a warned-but-unselected card gets the
+                      // same subtle-tinted-border-that-goes-full-on-hover
+                      // treatment every other card gets, just in amber
+                      // instead of the category accent. Selection still
+                      // wins visually if both are true -- a warned part
+                      // you've already picked reads as "current", with the
+                      // amber note below carrying the warning instead.
+                      ['--accent' as string]: selected ? accent : warned ? '#eab308' : accent,
                       ...(selected ? { borderColor: accent, background: soft } : {}),
                     }}
                   >
@@ -217,6 +234,24 @@ function PickerInner() {
                       ))}
                       {p.part.weightGrams > 0 && <span className="chip bg-black/[0.04] text-ink-muted" title="Weight">{p.part.weightGrams}g</span>}
                     </div>
+
+                    {/* Shown straight away, not behind a click -- this is
+                        exactly the "why is it amber" question a picker
+                        card has room to just answer, unlike a 30-row
+                        builder list. */}
+                    {warned && (
+                      <div className="mt-2.5 -mb-1 rounded-lg bg-warn-soft border border-warn-ring px-2.5 py-2 text-xs text-warn-text space-y-1.5">
+                        {p.warnedBy.map((w: { id: string; title: string; message: string; remedy?: string }) => (
+                          <div key={w.id} className="flex gap-1.5">
+                            <AlertTriangle size={12} className="shrink-0 mt-0.5" />
+                            <span>
+                              {w.title}
+                              {w.remedy && <span className="block text-[11px] opacity-80 mt-0.5">{w.remedy}</span>}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </button>
                 );
               })}

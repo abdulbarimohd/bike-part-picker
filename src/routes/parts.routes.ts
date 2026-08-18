@@ -435,12 +435,20 @@ for (const [slug, config] of Object.entries(CATEGORIES)) {
         const slot = (q.position === 'rear' ? slots[1] : slots[0]) ?? slots[0];
         rows = shaped.map((candidate: any) => {
           const hypothetical = { ...build, [slot]: candidate };
-          const blockers = getCompatibilityWarnings(hypothetical)
-            .filter((w) => w.severity === 'critical' && w.components.includes(slot as any));
+          const hypotheticalWarnings = getCompatibilityWarnings(hypothetical).filter((w) => w.components.includes(slot as any));
+          const blockers = hypotheticalWarnings.filter((w) => w.severity === 'critical');
+          // Same computation the row-level "warn" tint in BuilderMatrix
+          // reads once a part is already chosen (e.g. a shifter that
+          // bolts on fine but doesn't match the derailleur's speed count)
+          // -- surfaced here too so the picker can flag it BEFORE it's
+          // chosen, not just after. Still fully selectable: a warning
+          // never removes a candidate from `fits`, only `critical` does.
+          const warners = hypotheticalWarnings.filter((w) => w.severity === 'warning');
           return {
             ...candidate,
             compatible: blockers.length === 0,
             blockedBy: blockers.map((w) => ({ id: w.id, title: w.title, message: w.message })),
+            warnedBy: warners.map((w) => ({ id: w.id, title: w.title, message: w.message, remedy: w.remedy })),
           };
         });
       } else {
