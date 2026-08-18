@@ -78,6 +78,18 @@ function FooterLinkGroup({ heading, links }: { heading: string; links: { href: s
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${inter.variable} ${display.variable}`}>
+      {/* Impact.com's affiliate-verification tag uses a non-standard
+          `value` attribute (not `content`), which the Metadata API's
+          `other` field can't produce -- it always renders `content`. A
+          literal <head> is Next's documented escape hatch for exactly
+          this case (third-party tags the typed API doesn't model). */}
+      <head>
+        {/* React's MetaHTMLAttributes only types `content`, so the
+            non-standard `value` attribute Impact.com requires is passed
+            via spread to bypass that -- the element itself still renders
+            exactly as given. */}
+        <meta name="impact-site-verification" {...{ value: '74abf2f3-979e-4bbe-978f-80c4d91af31b' }} />
+      </head>
       <body className="font-sans min-h-screen">
         <DisciplineProvider>
         {/* Dark gunmetal header -- scoped deliberately to just the nav bar,
